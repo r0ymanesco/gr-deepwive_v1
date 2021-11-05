@@ -19,5 +19,6 @@
 # Boston, MA 02110-1301, USA.
 
 install(FILES
-    deepwive_v1_deepwive_v1_source.block.yml DESTINATION share/gnuradio/grc/blocks
+    deepwive_v1_deepwive_v1_source.block.yml
+    deepwive_v1_deepwive_v1_sink.block.yml DESTINATION share/gnuradio/grc/blocks
 )

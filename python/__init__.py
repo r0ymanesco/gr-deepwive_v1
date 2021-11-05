@@ -33,4 +33,5 @@ except ImportError:
 
 # import any pure python here
 from .deepwive_v1_source import deepwive_v1_source
+from .deepwive_v1_sink import deepwive_v1_sink
 #

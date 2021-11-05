@@ -24,9 +24,11 @@ import tensorrt as trt
 import pycuda.autoinit
 import pycuda.driver as cuda
 
+import pmt
+from gnuradio import gr
+
 import cv2
 import numpy as np
-from gnuradio import gr
 import ipdb
 
 
@@ -84,16 +86,17 @@ class deepwive_v1_source(gr.sync_block):
 
     def _get_video_frames(self, source_fn):
         self.video = cv2.VideoCapture(source_fn)
-        flag = True
+        flag, frame = self.video.read()
+        assert flag
         frames = []
         while flag:
+            frame = np.swapaxes(frame, 0, 1)
+            frame = np.swapaxes(frame, 0, 2)
+            frame = np.expand_dims(frame, axis=0) / 255.
+            frame = np.ascontiguousarray(frame, dtype=self.target_dtype)
+            frames.append(frame)
+
             flag, frame = self.video.read()
-            if flag:
-                frame = np.swapaxes(frame, 0, 1)
-                frame = np.swapaxes(frame, 0, 2)
-                frame = np.expand_dims(frame, axis=0) / 255.
-                frame = np.ascontiguousarray(frame, dtype=self.target_dtype)
-                frames.append(frame)
 
         self.codeword_shape = [1, self.model_cout, frame.shape[2]//16, frame.shape[3]//16]
         self.ch_uses = np.prod(self.codeword_shape[1:]) // 2
@@ -116,9 +119,9 @@ class deepwive_v1_source(gr.sync_block):
         self.key_encoder.execute_async_v2(bindings, self.stream.handle, None)
         cuda.memcpy_dtoh_async(output, d_output, self.stream)
 
-        # TODO can probably synchronize many batches at once
         self.stream.synchronize()
 
+        # TODO add block control to send fewer blocks
         ch_codeword = self.power_normalize(output)
         zero_pad = np.zeros((self.n_padding, 2), dtype=self.target_dtype)
         ch_input = np.concatenate((ch_codeword, zero_pad), axis=0, dtype=self.target_dtype)

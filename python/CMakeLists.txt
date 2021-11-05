@@ -32,7 +32,8 @@ endif()
 GR_PYTHON_INSTALL(
     FILES
     __init__.py
-    deepwive_v1_source.py DESTINATION ${GR_PYTHON_DIR}/deepwive_v1
+    deepwive_v1_source.py
+    deepwive_v1_sink.py DESTINATION ${GR_PYTHON_DIR}/deepwive_v1
 )
 
 ########################################################################
