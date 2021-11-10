@@ -19,7 +19,6 @@
 # Boston, MA 02110-1301, USA.
 
 
-import torch
 import tensorrt as trt
 import pycuda.autoinit
 import pycuda.driver as cuda

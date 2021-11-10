@@ -4,14 +4,14 @@ category: '[deepwive_v1]'
 
 templates:
   imports: import deepwive_v1
-  make: deepwive_v1.deepwive_v1_source(${source_fn}, ${model_fn}, ${model_cout}, ${packet_len},
-  ${snr}, ${use_fp16})
+  make: deepwive_v1.deepwive_v1_source(${source_fn}, ${model_fn}, ${model_cout}, ${packet_len}, ${snr}, ${use_fp16}, $(test_mode))
 
 #  Make one 'parameters' list entry for every parameter you want settable from the GUI.
 #     Keys include:
 #     * id (makes the value accessible as \$keyname, e.g. in the make entry)
 #     * label (label shown in the GUI)
 #     * dtype (e.g. int, float, complex, byte, short, xxx_vector, ...)
+
 parameters:
 - id: source_fn
   label: Source (video) file
@@ -36,6 +36,11 @@ parameters:
 - id: use_fp16
   label: Use FP16 precision
   dtype: bool
+
+- id: test_mode
+  label: Test code (don't use)
+  dtype: bool
+  default: False
 
 #  Make one 'inputs' list entry per input and one 'outputs' list entry per output.
 #  Keys include:
