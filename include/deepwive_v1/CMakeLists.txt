@@ -23,5 +23,7 @@
 ########################################################################
 install(FILES
     api.h
-    DESTINATION include/deepwive_v1
+    soft_equalizer_single_tap.h
+    deepwive_packet_header.h
+    header_format.h DESTINATION include/deepwive_v1
 )

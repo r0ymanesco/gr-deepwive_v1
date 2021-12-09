@@ -22,6 +22,7 @@
 import tensorrt as trt
 import pycuda.autoinit
 import pycuda.driver as cuda
+import threading
 
 import pmt
 from gnuradio import gr
@@ -35,15 +36,19 @@ class deepwive_v1_source(gr.sync_block):
     """
     docstring for block deepwive_v1_source
     """
+
     def __init__(self, source_fn, model_fn, model_cout, packet_len=96, snr=20,
-                 use_fp16=False, test_mode=False):
+                 use_fp16=False):
         gr.sync_block.__init__(self,
-            name="deepwive_v1_source",
-            in_sig=None,
-            out_sig=[np.csingle, np.uint8])
+                               name="deepwive_v1_source",
+                               in_sig=None,
+                               out_sig=[np.csingle])
+        test_mode = False
+        self.cfx = cuda.Device(0).make_context()
 
         if use_fp16:
             self.target_dtype = np.float16
+            assert 'fp16' in model_fn
         else:
             self.target_dtype = np.float32
 
@@ -59,6 +64,7 @@ class deepwive_v1_source(gr.sync_block):
             self.key_encoder = self._get_context(model_fn)
 
             self.video_frames = self._get_video_frames(source_fn)
+            self.video_frames = self.video_frames[:128]  # FIXME remove this in final version
             self.n_frames = len(self.video_frames)
             self.frame_idx = -1
             self.pair_idx = 0
@@ -94,26 +100,32 @@ class deepwive_v1_source(gr.sync_block):
             frame = np.expand_dims(frame, axis=0) / 255.
             frame = np.ascontiguousarray(frame, dtype=self.target_dtype)
             frames.append(frame)
+            frame_shape = frame.shape
 
             flag, frame = self.video.read()
 
-        self.codeword_shape = [1, self.model_cout, frame.shape[2]//16, frame.shape[3]//16]
+        self.codeword_shape = [1, self.model_cout, frame_shape[2]//16, frame_shape[3]//16]
         self.ch_uses = np.prod(self.codeword_shape[1:]) // 2
-        self.n_padding = self.packet_len - (self.ch_uses % self.packet_len)
+        if self.ch_uses % self.packet_len != 0:
+            self.n_padding = self.packet_len - (self.ch_uses % self.packet_len)
+        else:
+            self.n_padding = 0
         return frames
 
     def key_frame_encode(self, frame, snr):
-        output = np.empty(self.codeword_shape, dtype=self.target_dtype)
+        threading.Thread.__init__(self)
+        self.cfx.push()
 
+        output = np.empty(self.codeword_shape, dtype=self.target_dtype)
         input_allocations, input_bindings = self._allocate_memory((frame, snr))
         output_allocations, output_bindings = self._allocate_memory((output))
 
-        d_input_img = input_allocations[0]
+        d_input_frame = input_allocations[0]
         d_input_snr = input_allocations[1]
         d_output = output_allocations[0]
         bindings = input_bindings + output_bindings
 
-        cuda.memcpy_htod_async(d_input_img, frame, self.stream)
+        cuda.memcpy_htod_async(d_input_frame, frame, self.stream)
         cuda.memcpy_htod_async(d_input_snr, snr, self.stream)
         self.key_encoder.execute_async_v2(bindings, self.stream.handle, None)
         cuda.memcpy_dtoh_async(output, d_output, self.stream)
@@ -123,7 +135,9 @@ class deepwive_v1_source(gr.sync_block):
         # TODO add block control to send fewer blocks
         ch_codeword = self.power_normalize(output)
         zero_pad = np.zeros((self.n_padding, 2), dtype=self.target_dtype)
-        ch_input = np.concatenate((ch_codeword, zero_pad), axis=0, dtype=self.target_dtype)
+        ch_input = np.concatenate((ch_codeword, zero_pad), axis=0).astype(self.target_dtype)
+
+        self.cfx.pop()
         return ch_input
 
     def power_normalize(self, codeword):
@@ -206,9 +220,10 @@ class deepwive_v1_source(gr.sync_block):
 
     def work(self, input_items, output_items):
         payload_out = output_items[0]
-        header_out = output_items[1]
+        # header_out = output_items[1]
+        payload_idx = 0
 
-        for payload_idx in range(len(payload_out)):
+        while payload_idx < len(payload_out):
             if self.pair_idx % self.ch_uses == 0:
                 self.frame_idx = (self.frame_idx + 1) % self.n_frames
                 self.pair_idx = 0
@@ -218,20 +233,69 @@ class deepwive_v1_source(gr.sync_block):
                                                            self.snr)
 
             if self.pair_idx % self.packet_len == 0:
-                self.add_item_tag(0, payload_idx + self.nitems_written(0), pmt.intern('packet_len'), pmt.from_long(self.packet_len))
-                self.add_item_tag(1, payload_idx + self.nitems_written(1), pmt.intern('packet_len'), pmt.from_long(self.packet_len))
+                # print('packet_len {}'.format(self.packet_len))
+                # print('frame_idx {}'.format(self.frame_idx))
+                # print('packet_idx {}'.format(self.packet_idx))
 
-                self.add_item_tag(0, payload_idx + self.nitems_written(0), pmt.intern('frame_idx'), pmt.from_long(self.frame_idx))
-                self.add_item_tag(1, payload_idx + self.nitems_written(1), pmt.intern('frame_idx'), pmt.from_long(self.frame_idx))
+                self.add_item_tag(0, payload_idx + self.nitems_written(0), pmt.intern('packet_len'), pmt.from_long(144))
 
-                self.add_item_tag(0, payload_idx + self.nitems_written(0), pmt.intern('packet_idx'), pmt.from_long(self.packet_idx))
-                self.add_item_tag(1, payload_idx + self.nitems_written(1), pmt.intern('packet_idx'), pmt.from_long(self.packet_idx))
+                frame_idx_bits = '{0:07b}'.format(self.frame_idx)
+                frame_idx_bits = [np.float(b) for b in frame_idx_bits]
+                packet_idx_bits = '{0:09b}'.format(self.packet_idx)
+                packet_idx_bits = [np.float(b) for b in packet_idx_bits]
+                header_bits = (frame_idx_bits + packet_idx_bits) * 3
+
+                for bit in header_bits:
+                    payload_out[payload_idx] = (2 * bit - 1) + 0*1j  # TODO add method for different modulations
+                    payload_idx += 1
 
                 self.packet_idx += 1
 
             payload_out[payload_idx] = self.curr_codeword[self.pair_idx, 0] + self.curr_codeword[self.pair_idx, 1]*1j
-            byte_out[payload_idx] = np.uint8(7)
 
             self.pair_idx += 1
+            payload_idx += 1
+
+        # header_idx = 0
+        # for payload_idx in range(len(payload_out)):
+        #     if self.pair_idx % self.ch_uses == 0:
+        #         self.frame_idx = (self.frame_idx + 1) % self.n_frames
+        #         self.pair_idx = 0
+        #         self.packet_idx = 0
+
+        #         self.curr_codeword = self.key_frame_encode(self.video_frames[self.frame_idx],
+        #                                                    self.snr)
+
+        #     if self.pair_idx % self.packet_len == 0:
+        #         # print('packet_len {}'.format(self.packet_len))
+        #         # print('frame_idx {}'.format(self.frame_idx))
+        #         # print('packet_idx {}'.format(self.packet_idx))
+
+        #         frame_idx_bits = '{0:07b}'.format(self.frame_idx)
+        #         frame_idx_bits = [np.uint8(b) for b in frame_idx_bits]
+        #         packet_idx_bits = '{0:09b}'.format(self.packet_idx)
+        #         packet_idx_bits = [np.uint8(b) for b in packet_idx_bits]
+        #         header_bits = (frame_idx_bits + packet_idx_bits) * 3
+
+        #         self.add_item_tag(0, payload_idx + self.nitems_written(0), pmt.intern('packet_len'), pmt.from_long(self.packet_len))
+        #         self.add_item_tag(1, header_idx + self.nitems_written(1), pmt.intern('packet_len'), pmt.from_long(self.packet_len//2))
+
+        #         for bit in header_bits:
+        #             header_out[header_idx] = bit
+        #             header_idx += 1
+        #             # TODO can potentially mux the header and payload here instead
+
+        #         # self.add_item_tag(0, payload_idx + self.nitems_written(0), pmt.intern('frame_idx'), pmt.from_long(self.frame_idx))
+        #         # self.add_item_tag(1, payload_idx + self.nitems_written(1), pmt.intern('frame_idx'), pmt.from_long(self.frame_idx))
+
+        #         # self.add_item_tag(0, payload_idx + self.nitems_written(0), pmt.intern('packet_idx'), pmt.from_long(self.packet_idx))
+        #         # self.add_item_tag(1, payload_idx + self.nitems_written(1), pmt.intern('packet_idx'), pmt.from_long(self.packet_idx))
+
+        #         self.packet_idx += 1
+
+        #     payload_out[payload_idx] = self.curr_codeword[self.pair_idx, 0] + self.curr_codeword[self.pair_idx, 1]*1j
+        #     # header_out[payload_idx] = np.uint8(7)
+
+        #     self.pair_idx += 1
 
         return len(output_items[0])

@@ -43,11 +43,12 @@ class deepwive_v1_sink(gr.basic_block):
     """
     docstring for block deepwive_v1_sink
     """
+
     def __init__(self, source_fn, model_fn, model_cout, packet_len=96, snr=20, use_fp16=False):
         gr.sync_block.__init__(self,
-            name="deepwive_v1_sink",
-            in_sig=[np.csingle, np.uint8],
-            out_sig=None)
+                               name="deepwive_v1_sink",
+                               in_sig=[np.csingle, np.uint8],
+                               out_sig=None)
 
         in_port_name = 'pdu_in'
         self.message_port_register_in(pmt.intern(in_port_name))

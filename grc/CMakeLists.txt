@@ -20,5 +20,8 @@
 
 install(FILES
     deepwive_v1_deepwive_v1_source.block.yml
-    deepwive_v1_deepwive_v1_sink.block.yml DESTINATION share/gnuradio/grc/blocks
+    deepwive_v1_deepwive_v1_sink.block.yml
+    deepwive_v1_soft_equalizer_single_tap.block.yml
+    deepwive_v1_deepwive_packet_header.block.yml
+    deepwive_v1_header_format.block.yml DESTINATION share/gnuradio/grc/blocks
 )

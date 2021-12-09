@@ -13,12 +13,13 @@ def to_np_img(img):
     img = img[:, :, [2, 1, 0]]
     return img.astype(np.float32)
 
-source_block = deepwive_v1.deepwive_v1_source('test_vid/v_CleanAndJerk_g24_c02.avi',
-                                              ['test_model/key_encoder_fp16_graph.trt',
-                                               'test_model/key_decoder_fp16_graph.trt'],
+
+source_block = deepwive_v1.deepwive_v1_source('test_files/v_YoYo_g25_c05.avi',
+                                              ['test_files/key_encoder.trt',
+                                               'test_files/key_decoder.trt'],
+                                              model_cout=240,
                                               snr=20.,
-                                              use_fp16=True,
-                                              test_mode=True)
+                                              use_fp16=False)
 input_frame, output_frame, mse = source_block.test_work()
 
 ipdb.set_trace()

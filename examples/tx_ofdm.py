@@ -25,6 +25,8 @@ from PyQt5 import Qt
 from gnuradio import qtgui
 from gnuradio.filter import firdes
 import sip
+from deepwive_v1 import header_format
+from deepwive_v1 import soft_equalizer_single_tap, deepwive_packet_header
 from gnuradio import blocks
 import numpy
 from gnuradio import digital
@@ -36,8 +38,9 @@ import signal
 from argparse import ArgumentParser
 from gnuradio.eng_arg import eng_float, intx
 from gnuradio import eng_notation
+from gnuradio.digital.utils import tagged_streams
 from gnuradio.qtgui import Range, RangeWidget
-import limesdr
+import gnuradio.digital as digital
 
 from gnuradio import qtgui
 
@@ -79,14 +82,14 @@ class tx_ofdm(gr.top_block, Qt.QWidget):
         ##################################################
         self.occupied_carriers = occupied_carriers = (list(range(-26, -21)) + list(range(-20, -7)) + list(range(-6, 0)) + list(range(1, 7)) + list(range(8, 21)) + list(range(22, 27)),)
         self.length_tag_key = length_tag_key = "packet_len"
-        self.tun_gain = tun_gain = 10
+        self.tun_gain = tun_gain = 50
         self.sync_word2 = sync_word2 = [0, 0, 0, 0, 0, 0, -1, -1, -1, -1, 1, 1, -1, -1, -1, 1, -1, 1, 1, 1, 1, 1, -1, -1, -1, -1, -1, 1, -1, -1, 1, -1, 0, 1, -1, 1, 1, 1, -1, 1, 1, 1, -1, 1, 1, 1, 1, -1, 1, -1, -1, -1, 1, -1, 1, -1, -1, -1, -1, 0, 0, 0, 0, 0]
         self.sync_word1 = sync_word1 = [0., 0., 0., 0., 0., 0., 0., 1.41421356, 0., -1.41421356, 0., 1.41421356, 0., -1.41421356, 0., -1.41421356, 0., -1.41421356, 0., 1.41421356, 0., -1.41421356, 0., 1.41421356, 0., -1.41421356, 0., -1.41421356, 0., -1.41421356, 0., -1.41421356, 0., 1.41421356, 0., -1.41421356, 0., 1.41421356, 0., 1.41421356, 0., 1.41421356, 0., -1.41421356, 0., 1.41421356, 0., 1.41421356, 0., 1.41421356, 0., -1.41421356, 0., 1.41421356, 0., 1.41421356, 0., 1.41421356, 0., 0., 0., 0., 0., 0.]
-        self.samp_rate = samp_rate = 200000
+        self.samp_rate = samp_rate = 100
         self.rolloff = rolloff = 0
         self.pilot_symbols = pilot_symbols = ((1, 1, 1, -1,),)
         self.pilot_carriers = pilot_carriers = ((-21, -7, 7, 21,),)
-        self.payload_mod = payload_mod = digital.constellation_qpsk()
+        self.payload_mod = payload_mod = digital.constellation_bpsk()
         self.packet_len = packet_len = 96
         self.header_mod = header_mod = digital.constellation_bpsk()
         self.hdr_format = hdr_format = digital.header_format_ofdm(occupied_carriers, 1, length_tag_key,)
@@ -95,7 +98,7 @@ class tx_ofdm(gr.top_block, Qt.QWidget):
         ##################################################
         # Blocks
         ##################################################
-        self._tun_gain_range = Range(0, 100, 1, 10, 200)
+        self._tun_gain_range = Range(0, 100, 1, 50, 200)
         self._tun_gain_win = RangeWidget(self._tun_gain_range, self.set_tun_gain, 'tun_gain', "counter_slider", float)
         self.top_layout.addWidget(self._tun_gain_win)
         self.qtgui_time_sink_x_0 = qtgui.time_sink_c(
@@ -188,27 +191,86 @@ class tx_ofdm(gr.top_block, Qt.QWidget):
 
         self._qtgui_freq_sink_x_0_win = sip.wrapinstance(self.qtgui_freq_sink_x_0.pyqwidget(), Qt.QWidget)
         self.top_layout.addWidget(self._qtgui_freq_sink_x_0_win)
-        self.limesdr_sink_0 = limesdr.sink('00090706024F2436', 0, '', '')
+        self.qtgui_const_sink_x_1 = qtgui.const_sink_c(
+            1024, #size
+            "payload", #name
+            1 #number of inputs
+        )
+        self.qtgui_const_sink_x_1.set_update_time(0.10)
+        self.qtgui_const_sink_x_1.set_y_axis(-2, 2)
+        self.qtgui_const_sink_x_1.set_x_axis(-2, 2)
+        self.qtgui_const_sink_x_1.set_trigger_mode(qtgui.TRIG_MODE_FREE, qtgui.TRIG_SLOPE_POS, 0.0, 0, "")
+        self.qtgui_const_sink_x_1.enable_autoscale(False)
+        self.qtgui_const_sink_x_1.enable_grid(False)
+        self.qtgui_const_sink_x_1.enable_axis_labels(True)
 
 
-        self.limesdr_sink_0.set_sample_rate(samp_rate)
+        labels = ['', '', '', '', '',
+            '', '', '', '', '']
+        widths = [1, 1, 1, 1, 1,
+            1, 1, 1, 1, 1]
+        colors = ["blue", "red", "red", "red", "red",
+            "red", "red", "red", "red", "red"]
+        styles = [0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0]
+        markers = [0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0]
+        alphas = [1.0, 1.0, 1.0, 1.0, 1.0,
+            1.0, 1.0, 1.0, 1.0, 1.0]
+
+        for i in range(1):
+            if len(labels[i]) == 0:
+                self.qtgui_const_sink_x_1.set_line_label(i, "Data {0}".format(i))
+            else:
+                self.qtgui_const_sink_x_1.set_line_label(i, labels[i])
+            self.qtgui_const_sink_x_1.set_line_width(i, widths[i])
+            self.qtgui_const_sink_x_1.set_line_color(i, colors[i])
+            self.qtgui_const_sink_x_1.set_line_style(i, styles[i])
+            self.qtgui_const_sink_x_1.set_line_marker(i, markers[i])
+            self.qtgui_const_sink_x_1.set_line_alpha(i, alphas[i])
+
+        self._qtgui_const_sink_x_1_win = sip.wrapinstance(self.qtgui_const_sink_x_1.pyqwidget(), Qt.QWidget)
+        self.top_layout.addWidget(self._qtgui_const_sink_x_1_win)
+        self.qtgui_const_sink_x_0 = qtgui.const_sink_c(
+            1024, #size
+            "header", #name
+            1 #number of inputs
+        )
+        self.qtgui_const_sink_x_0.set_update_time(0.10)
+        self.qtgui_const_sink_x_0.set_y_axis(-2, 2)
+        self.qtgui_const_sink_x_0.set_x_axis(-2, 2)
+        self.qtgui_const_sink_x_0.set_trigger_mode(qtgui.TRIG_MODE_FREE, qtgui.TRIG_SLOPE_POS, 0.0, 0, "")
+        self.qtgui_const_sink_x_0.enable_autoscale(False)
+        self.qtgui_const_sink_x_0.enable_grid(False)
+        self.qtgui_const_sink_x_0.enable_axis_labels(True)
 
 
-        self.limesdr_sink_0.set_center_freq(1e9, 0)
+        labels = ['', '', '', '', '',
+            '', '', '', '', '']
+        widths = [1, 1, 1, 1, 1,
+            1, 1, 1, 1, 1]
+        colors = ["blue", "red", "red", "red", "red",
+            "red", "red", "red", "red", "red"]
+        styles = [0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0]
+        markers = [0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0]
+        alphas = [1.0, 1.0, 1.0, 1.0, 1.0,
+            1.0, 1.0, 1.0, 1.0, 1.0]
 
-        self.limesdr_sink_0.set_bandwidth(5e6, 0)
+        for i in range(1):
+            if len(labels[i]) == 0:
+                self.qtgui_const_sink_x_0.set_line_label(i, "Data {0}".format(i))
+            else:
+                self.qtgui_const_sink_x_0.set_line_label(i, labels[i])
+            self.qtgui_const_sink_x_0.set_line_width(i, widths[i])
+            self.qtgui_const_sink_x_0.set_line_color(i, colors[i])
+            self.qtgui_const_sink_x_0.set_line_style(i, styles[i])
+            self.qtgui_const_sink_x_0.set_line_marker(i, markers[i])
+            self.qtgui_const_sink_x_0.set_line_alpha(i, alphas[i])
 
-
-        self.limesdr_sink_0.set_digital_filter(samp_rate, 0)
-
-
-        self.limesdr_sink_0.set_gain(tun_gain, 0)
-
-
-        self.limesdr_sink_0.set_antenna(255, 0)
-
-
-        self.limesdr_sink_0.calibrate(2.5e6, 0)
+        self._qtgui_const_sink_x_0_win = sip.wrapinstance(self.qtgui_const_sink_x_0.pyqwidget(), Qt.QWidget)
+        self.top_layout.addWidget(self._qtgui_const_sink_x_0_win)
         self.fft_vxx_0 = fft.fft_vcc(fft_len, False, (), True, 1)
         self.digital_protocol_formatter_bb_0 = digital.protocol_formatter_bb(hdr_format, length_tag_key)
         self.digital_ofdm_cyclic_prefixer_0 = digital.ofdm_cyclic_prefixer(fft_len, fft_len + fft_len//4, rolloff, length_tag_key)
@@ -237,11 +299,12 @@ class tx_ofdm(gr.top_block, Qt.QWidget):
         self.connect((self.blocks_stream_to_tagged_stream_0, 0), (self.digital_crc32_bb_0, 0))
         self.connect((self.blocks_tag_gate_0, 0), (self.blocks_throttle_0, 0))
         self.connect((self.blocks_tagged_stream_mux_0, 0), (self.digital_ofdm_carrier_allocator_cvc_0, 0))
-        self.connect((self.blocks_throttle_0, 0), (self.limesdr_sink_0, 0))
         self.connect((self.blocks_throttle_0, 0), (self.qtgui_freq_sink_x_0, 0))
         self.connect((self.blocks_throttle_0, 0), (self.qtgui_time_sink_x_0, 0))
         self.connect((self.digital_chunks_to_symbols_xx_0, 0), (self.blocks_tagged_stream_mux_0, 0))
+        self.connect((self.digital_chunks_to_symbols_xx_0, 0), (self.qtgui_const_sink_x_0, 0))
         self.connect((self.digital_chunks_to_symbols_xx_0_0, 0), (self.blocks_tagged_stream_mux_0, 1))
+        self.connect((self.digital_chunks_to_symbols_xx_0_0, 0), (self.qtgui_const_sink_x_1, 0))
         self.connect((self.digital_crc32_bb_0, 0), (self.blocks_repack_bits_bb_0, 0))
         self.connect((self.digital_crc32_bb_0, 0), (self.digital_protocol_formatter_bb_0, 0))
         self.connect((self.digital_ofdm_carrier_allocator_cvc_0, 0), (self.fft_vxx_0, 0))
@@ -274,7 +337,6 @@ class tx_ofdm(gr.top_block, Qt.QWidget):
 
     def set_tun_gain(self, tun_gain):
         self.tun_gain = tun_gain
-        self.limesdr_sink_0.set_gain(self.tun_gain, 0)
 
     def get_sync_word2(self):
         return self.sync_word2
@@ -294,8 +356,6 @@ class tx_ofdm(gr.top_block, Qt.QWidget):
     def set_samp_rate(self, samp_rate):
         self.samp_rate = samp_rate
         self.blocks_throttle_0.set_sample_rate(self.samp_rate)
-        self.limesdr_sink_0.set_digital_filter(self.samp_rate, 0)
-        self.limesdr_sink_0.set_digital_filter(self.samp_rate, 1)
         self.qtgui_freq_sink_x_0.set_frequency_range(0, self.samp_rate)
         self.qtgui_time_sink_x_0.set_samp_rate(self.samp_rate)
 

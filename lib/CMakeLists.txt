@@ -24,6 +24,9 @@
 include(GrPlatform) #define LIB_SUFFIX
 
 list(APPEND deepwive_v1_sources
+    soft_equalizer_single_tap.cc
+    deepwive_packet_header.cc
+    header_format.cc
 )
 
 set(deepwive_v1_sources "${deepwive_v1_sources}" PARENT_SCOPE)
@@ -33,7 +36,7 @@ if(NOT deepwive_v1_sources)
 endif(NOT deepwive_v1_sources)
 
 add_library(gnuradio-deepwive_v1 SHARED ${deepwive_v1_sources})
-target_link_libraries(gnuradio-deepwive_v1 gnuradio::gnuradio-runtime)
+target_link_libraries(gnuradio-deepwive_v1 gnuradio::gnuradio-runtime gnuradio::gnuradio-filter gnuradio::gnuradio-fft gnuradio::gnuradio-blocks gnuradio::gnuradio-analog gnuradio::gnuradio-digital Volk::volk)
 target_include_directories(gnuradio-deepwive_v1
     PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../include>
     PUBLIC $<INSTALL_INTERFACE:include>
