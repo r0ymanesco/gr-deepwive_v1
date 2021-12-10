@@ -19,23 +19,27 @@
 # Boston, MA 02110-1301, USA.
 
 
+import cv2
+import time
+import numpy as np
+from drawnow import drawnow
+import matplotlib.pyplot as plt
+import ipdb
+
 import tensorrt as trt
 import pycuda.autoinit
 import pycuda.driver as cuda
+import threading
 
 import pmt
 from gnuradio import gr
-
-import cv2
-import numpy as np
-import ipdb
 
 
 def to_np_img(img):
     img = np.squeeze(img, axis=0)
     img = np.swapaxes(img, 0, 2)
     img = np.swapaxes(img, 0, 1)
-    img = img[:, :, [2, 1, 0]]
+    # img = img[:, :, [2, 1, 0]]
     return img.astype(np.float32)
 
 
@@ -47,8 +51,10 @@ class deepwive_v1_sink(gr.basic_block):
     def __init__(self, source_fn, model_fn, model_cout, packet_len=96, snr=20, use_fp16=False):
         gr.sync_block.__init__(self,
                                name="deepwive_v1_sink",
-                               in_sig=[np.csingle, np.uint8],
+                               in_sig=None,
                                out_sig=None)
+
+        self.cfx = cuda.Device(0).make_context()
 
         in_port_name = 'pdu_in'
         self.message_port_register_in(pmt.intern(in_port_name))
@@ -56,6 +62,7 @@ class deepwive_v1_sink(gr.basic_block):
 
         if use_fp16:
             self.target_dtype = np.float16
+            assert 'fp16' in model_fn
         else:
             self.target_dtype = np.float32
 
@@ -70,11 +77,14 @@ class deepwive_v1_sink(gr.basic_block):
         self.key_decoder = self._get_context(model_fn)
 
         self.video_frames = self._get_video_frames(source_fn)
+        self.video_frames = self.video_frames[:128]  # FIXME remove this in final version
         self.n_frames = len(self.video_frames)
         self.window_name = 'video_stream'
         self._open_window(self.frame_shape[3], self.frame_shape[2], self.window_name)
 
         self._reset()
+
+        self.prev_packet_idx = -1
 
     def _reset(self):
         self.curr_frame_packets = [None] * self.n_packets
@@ -109,14 +119,18 @@ class deepwive_v1_sink(gr.basic_block):
             frame = np.expand_dims(frame, axis=0) / 255.
             frame = np.ascontiguousarray(frame, dtype=self.target_dtype)
             frames.append(frame)
+            frame_shape = frame.shape
 
             flag, frame = self.video.read()
 
-        self.codeword_shape = [1, self.model_cout, frame.shape[2]//16, frame.shape[3]//16]
+        self.codeword_shape = [1, self.model_cout, frame_shape[2]//16, frame_shape[3]//16]
         self.ch_uses = np.prod(self.codeword_shape[1:]) // 2
         self.n_packets = self.ch_uses // self.packet_len
-        self.n_padding = self.packet_len - (self.ch_uses % self.packet_len)
         self.frame_shape = frames[0].shape
+        if self.ch_uses % self.packet_len != 0:
+            self.n_padding = self.packet_len - (self.ch_uses % self.packet_len)
+        else:
+            self.n_padding = 0
         return frames
 
     def _open_window(self, width, height, window_name):
@@ -126,8 +140,10 @@ class deepwive_v1_sink(gr.basic_block):
         cv2.setWindowTitle(window_name, 'Output Frames')
 
     def key_frame_decode(self, codeword, snr):
-        output = np.empty(self.frame_shape, dtype=self.target_dtype)
+        threading.Thread.__init__(self)
+        self.cfx.push()
 
+        output = np.empty(self.frame_shape, dtype=self.target_dtype)
         input_allocations, input_bindings = self._allocate_memory((codeword, snr))
         output_allocations, output_bindings = self._allocate_memory((output))
 
@@ -143,26 +159,56 @@ class deepwive_v1_sink(gr.basic_block):
 
         # TODO can probably synchronize many frames at once; depending on optimization
         self.stream.synchronize()
+
+        self.cfx.pop()
         return output
 
     def msg_handler(self, msg_pmt):
+        # threading.Thread.__init__(self)
+        # self.cfx.push()
+
+        # ipdb.set_trace()
         tags = pmt.to_python(pmt.car(msg_pmt))
         payload_in = pmt.to_python(pmt.cdr(msg_pmt))
 
         frame_idx = tags['frame_idx']
-        packet_idx = tage['packet_idx']
+        packet_idx = tags['packet_idx']
+        # curr_frame = self.video_frames[frame_idx]
+
+        # print('Rx frame_idx: {}, packet_idx: {}'.format(frame_idx, packet_idx))
+
+        # if packet_idx - self.prev_packet_idx != 1:
+        #     ipdb.set_trace()
+
+        # self.prev_packet_idx = packet_idx
+
+        # if packet_idx > 64:
+        #     ipdb.set_trace()
 
         received_IQ = [[pair.real, pair.imag] for pair in payload_in]
         received_IQ = np.array(received_IQ)
         self.curr_frame_packets[packet_idx] = received_IQ
 
-        if (packet_idx == self.n_packets - 1) and (None not in self.curr_frame_packets):
-            codeword = np.concatenate(self.curr_frame_packets, axis=0)[:-self.n_padding]
+        if (packet_idx == self.n_packets - 1) and not any([v is None for v in self.curr_frame_packets]):
+            start_time = time.time()
+
+            codeword = np.concatenate(self.curr_frame_packets, axis=0)[:self.ch_uses-self.n_padding]
             codeword = np.ascontiguousarray(codeword, dtype=self.target_dtype).reshape(self.codeword_shape)
             decoded_frame = self.key_frame_decode(codeword, self.snr)
+            # mse = np.mean((curr_frame - decoded_frame) ** 2)
             frame = to_np_img(decoded_frame)
-            # TODO test the cv2 stream code
+
+            # drawnow(plt.imshow, False, False, True, frame)
+
             cv2.imshow(self.window_name, frame)
 
-        elif (packet_idx == self.n_packets - 1) and (None in self.curr_frame_packets):
+            if cv2.waitKey(1) == 13:
+                cv2.destroyAllWindows()
+
+            end_time = time.time()
+            print('decode time: {}'.format(end_time - start_time))
+
+        elif (packet_idx == self.n_packets - 1) and any([v is None for v in self.curr_frame_packets]):
             self._reset()
+
+        # self.cfx.pop()

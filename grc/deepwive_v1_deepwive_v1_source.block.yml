@@ -62,10 +62,10 @@ outputs:
   # vlen: ...
   # optional: ...
 
-# - label: header
-#   domain: stream
-#   dtype: byte
-#   optional: true
+- label: encoded_symbols
+  domain: stream
+  dtype: complex
+  optional: true
 
 #  'file_format' specifies the version of the GRC yml format used in the file
 #  and should usually not be changed.

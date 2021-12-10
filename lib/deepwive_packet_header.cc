@@ -165,8 +165,8 @@ deepwive_packet_header::~deepwive_packet_header() {}
   int k = 0;
   for (int i = 0; i < 3; i++) // FIXME this is hard coded to give 48 bits, should find a more flexible solution
   {
-    insert_into_header_buffer(out, k, frame_idx, 12);
-    insert_into_header_buffer(out, k, packet_idx, 4);
+    insert_into_header_buffer(out, k, frame_idx, 7);
+    insert_into_header_buffer(out, k, packet_idx, 9);
   }
   return true;
 
@@ -222,6 +222,9 @@ deepwive_packet_header::~deepwive_packet_header() {}
   tagH.key = pmt::intern("packet_idx");
   tagH.value = pmt::from_long(header_packet_idx[0]);
   tags.push_back(tagH);
+
+  // std::cout << "frame_idx " << header_frame_idx[0] << std::endl;
+  // std::cout << "packet_idx " << header_packet_idx[0] << std::endl;
 
   // To figure out how many payload OFDM symbols there are in this frame,
   // we need to go through the carrier allocation and count the number of

@@ -19,6 +19,11 @@
 # Boston, MA 02110-1301, USA.
 
 
+import cv2
+import time
+import numpy as np
+import ipdb
+
 import tensorrt as trt
 import pycuda.autoinit
 import pycuda.driver as cuda
@@ -26,10 +31,6 @@ import threading
 
 import pmt
 from gnuradio import gr
-
-import cv2
-import numpy as np
-import ipdb
 
 
 class deepwive_v1_source(gr.sync_block):
@@ -42,7 +43,8 @@ class deepwive_v1_source(gr.sync_block):
         gr.sync_block.__init__(self,
                                name="deepwive_v1_source",
                                in_sig=None,
-                               out_sig=[np.csingle])
+                               out_sig=[np.csingle, np.csingle])
+
         test_mode = False
         self.cfx = cuda.Device(0).make_context()
 
@@ -107,6 +109,7 @@ class deepwive_v1_source(gr.sync_block):
         self.codeword_shape = [1, self.model_cout, frame_shape[2]//16, frame_shape[3]//16]
         self.ch_uses = np.prod(self.codeword_shape[1:]) // 2
         if self.ch_uses % self.packet_len != 0:
+            # FIXME fix this; this is so ugly
             self.n_padding = self.packet_len - (self.ch_uses % self.packet_len)
         else:
             self.n_padding = 0
@@ -220,8 +223,10 @@ class deepwive_v1_source(gr.sync_block):
 
     def work(self, input_items, output_items):
         payload_out = output_items[0]
-        # header_out = output_items[1]
+        encoded_symbols = output_items[1]
+
         payload_idx = 0
+        encoded_symbol_idx = 0
 
         while payload_idx < len(payload_out):
             if self.pair_idx % self.ch_uses == 0:
@@ -229,8 +234,11 @@ class deepwive_v1_source(gr.sync_block):
                 self.pair_idx = 0
                 self.packet_idx = 0
 
+                # start_time = time.time()
                 self.curr_codeword = self.key_frame_encode(self.video_frames[self.frame_idx],
                                                            self.snr)
+                # end_time = time.time()
+                # print('encode time: {}'.format(end_time - start_time))
 
             if self.pair_idx % self.packet_len == 0:
                 # print('packet_len {}'.format(self.packet_len))
@@ -241,61 +249,38 @@ class deepwive_v1_source(gr.sync_block):
 
                 frame_idx_bits = '{0:07b}'.format(self.frame_idx)
                 frame_idx_bits = [np.float(b) for b in frame_idx_bits]
+                frame_idx_bits = frame_idx_bits[::-1]
+
+                # if self.packet_idx > 64:
+                #     ipdb.set_trace()
                 packet_idx_bits = '{0:09b}'.format(self.packet_idx)
                 packet_idx_bits = [np.float(b) for b in packet_idx_bits]
+                packet_idx_bits = packet_idx_bits[::-1]
+
+                # print('Tx frame_idx: {}, packet_idx: {}'.format(self.frame_idx, self.packet_idx))
+
                 header_bits = (frame_idx_bits + packet_idx_bits) * 3
+                # TODO can use better FEC methods
 
                 for bit in header_bits:
-                    payload_out[payload_idx] = (2 * bit - 1) + 0*1j  # TODO add method for different modulations
+                    # TODO add method for different header modulations
+                    payload_out[payload_idx] = (2 * bit - 1) + 0*1j
                     payload_idx += 1
+                    if payload_idx >= len(payload_out):
+                        break
+
+                if payload_idx >= len(payload_out):
+                    break
 
                 self.packet_idx += 1
 
-            payload_out[payload_idx] = self.curr_codeword[self.pair_idx, 0] + self.curr_codeword[self.pair_idx, 1]*1j
+            payload_out[payload_idx] = (self.curr_codeword[self.pair_idx, 0]
+                                        + self.curr_codeword[self.pair_idx, 1]*1j)
+            encoded_symbols[encoded_symbol_idx] = (self.curr_codeword[self.pair_idx, 0]
+                                                   + self.curr_codeword[self.pair_idx, 1]*1j)
 
             self.pair_idx += 1
             payload_idx += 1
-
-        # header_idx = 0
-        # for payload_idx in range(len(payload_out)):
-        #     if self.pair_idx % self.ch_uses == 0:
-        #         self.frame_idx = (self.frame_idx + 1) % self.n_frames
-        #         self.pair_idx = 0
-        #         self.packet_idx = 0
-
-        #         self.curr_codeword = self.key_frame_encode(self.video_frames[self.frame_idx],
-        #                                                    self.snr)
-
-        #     if self.pair_idx % self.packet_len == 0:
-        #         # print('packet_len {}'.format(self.packet_len))
-        #         # print('frame_idx {}'.format(self.frame_idx))
-        #         # print('packet_idx {}'.format(self.packet_idx))
-
-        #         frame_idx_bits = '{0:07b}'.format(self.frame_idx)
-        #         frame_idx_bits = [np.uint8(b) for b in frame_idx_bits]
-        #         packet_idx_bits = '{0:09b}'.format(self.packet_idx)
-        #         packet_idx_bits = [np.uint8(b) for b in packet_idx_bits]
-        #         header_bits = (frame_idx_bits + packet_idx_bits) * 3
-
-        #         self.add_item_tag(0, payload_idx + self.nitems_written(0), pmt.intern('packet_len'), pmt.from_long(self.packet_len))
-        #         self.add_item_tag(1, header_idx + self.nitems_written(1), pmt.intern('packet_len'), pmt.from_long(self.packet_len//2))
-
-        #         for bit in header_bits:
-        #             header_out[header_idx] = bit
-        #             header_idx += 1
-        #             # TODO can potentially mux the header and payload here instead
-
-        #         # self.add_item_tag(0, payload_idx + self.nitems_written(0), pmt.intern('frame_idx'), pmt.from_long(self.frame_idx))
-        #         # self.add_item_tag(1, payload_idx + self.nitems_written(1), pmt.intern('frame_idx'), pmt.from_long(self.frame_idx))
-
-        #         # self.add_item_tag(0, payload_idx + self.nitems_written(0), pmt.intern('packet_idx'), pmt.from_long(self.packet_idx))
-        #         # self.add_item_tag(1, payload_idx + self.nitems_written(1), pmt.intern('packet_idx'), pmt.from_long(self.packet_idx))
-
-        #         self.packet_idx += 1
-
-        #     payload_out[payload_idx] = self.curr_codeword[self.pair_idx, 0] + self.curr_codeword[self.pair_idx, 1]*1j
-        #     # header_out[payload_idx] = np.uint8(7)
-
-        #     self.pair_idx += 1
+            encoded_symbol_idx += 1
 
         return len(output_items[0])
