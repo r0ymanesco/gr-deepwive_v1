@@ -77,7 +77,7 @@ class deepwive_v1_sink(gr.basic_block):
         self.key_decoder = self._get_context(model_fn)
 
         self.video_frames = self._get_video_frames(source_fn)
-        self.video_frames = self.video_frames[:128]  # FIXME remove this in final version
+        self.video_frames = self.video_frames[:125]  # FIXME remove this in final version
         self.n_frames = len(self.video_frames)
         self.window_name = 'video_stream'
         self._open_window(self.frame_shape[3], self.frame_shape[2], self.window_name)
@@ -127,17 +127,14 @@ class deepwive_v1_sink(gr.basic_block):
         self.ch_uses = np.prod(self.codeword_shape[1:]) // 2
         self.n_packets = self.ch_uses // self.packet_len
         self.frame_shape = frames[0].shape
-        if self.ch_uses % self.packet_len != 0:
-            self.n_padding = self.packet_len - (self.ch_uses % self.packet_len)
-        else:
-            self.n_padding = 0
+        self.n_padding = (self.packet_len - (self.ch_uses % self.packet_len)) % self.packet_len
         return frames
 
     def _open_window(self, width, height, window_name):
         cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
         cv2.resizeWindow(window_name, width, height)
         cv2.moveWindow(window_name, 0, 0)
-        cv2.setWindowTitle(window_name, 'Output Frames')
+        cv2.setWindowTitle(window_name, window_name)
 
     def key_frame_decode(self, codeword, snr):
         threading.Thread.__init__(self)
@@ -164,9 +161,6 @@ class deepwive_v1_sink(gr.basic_block):
         return output
 
     def msg_handler(self, msg_pmt):
-        # threading.Thread.__init__(self)
-        # self.cfx.push()
-
         # ipdb.set_trace()
         tags = pmt.to_python(pmt.car(msg_pmt))
         payload_in = pmt.to_python(pmt.cdr(msg_pmt))
@@ -210,5 +204,3 @@ class deepwive_v1_sink(gr.basic_block):
 
         elif (packet_idx == self.n_packets - 1) and any([v is None for v in self.curr_frame_packets]):
             self._reset()
-
-        # self.cfx.pop()
