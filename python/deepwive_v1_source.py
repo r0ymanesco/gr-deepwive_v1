@@ -188,7 +188,6 @@ class deepwive_v1_source(gr.sync_block):
                                in_sig=None,
                                out_sig=[np.csingle])
 
-        test_mode = False
         self.cfx = cuda.Device(0).make_context()
 
         if use_fp16:
@@ -204,33 +203,40 @@ class deepwive_v1_source(gr.sync_block):
         self.snr = np.array([[snr]], dtype=self.target_dtype)
         self.use_fp16 = use_fp16
 
-        if not test_mode:
-            self._get_runtime(trt.Logger(trt.Logger.WARNING))
-            (self.key_encoder,
-             self.interp_encoder,
-             self.ssf_net,
-             self.bw_allocator) = self._get_context(model_fn)
+        self._get_runtime(trt.Logger(trt.Logger.WARNING))
+        (self.key_encoder,
+         self.interp_encoder,
+         self.ssf_net,
+         self.bw_allocator) = self._get_context(model_fn)
 
-            self.video_frames = self._get_video_frames(source_fn)
-            self.video_frames = self.video_frames[:125]  # FIXME remove this in final version
-            self.n_frames = len(self.video_frames)
-            self.frame_idx = -1
-            self.pair_idx = 0
-            self.packet_idx = 0
+        # self.key_encoder = self._get_context(model_fn)
 
-            self.num_chunks = num_chunks
-            self.chunk_size = model_cout // num_chunks
-            self.gop_size = gop_size
-            self.ssf_sigma = 0.01
-            self.ssf_levels = 5
+        self.num_chunks = num_chunks
+        self.chunk_size = model_cout // num_chunks
+        self.gop_size = gop_size
+        self.ssf_sigma = 0.01
+        self.ssf_levels = 5
 
-            self._get_bw_set()
+        self.video_frames = self._get_video_frames(source_fn)
+        self.video_frames = self.video_frames[:125]  # FIXME remove this in final version
+        self.n_frames = len(self.video_frames)
+        self.frame_idx = -1
+        self.pair_idx = 0
+        self.packet_idx = 0
+
+        self._get_bw_set()
+        self._allocate_memory()
 
     def _get_runtime(self, logger):
         self.runtime = trt.Runtime(logger)
         self.stream = cuda.Stream()
 
     def _get_context(self, model_fns):
+        # f = open(model_fns, 'rb')
+        # engine = self.runtime.deserialize_cuda_engine(f.read())
+        # ctx = engine.create_execution_context()
+        # return ctx
+
         contexts = []
         for fn in model_fns:
             f = open(fn, 'rb')
@@ -239,14 +245,39 @@ class deepwive_v1_source(gr.sync_block):
             contexts.append(ctx)
         return contexts
 
-    def _allocate_memory(self, samples):
-        allocations = []
-        bindings = []
-        for sample in samples:
-            alloc = cuda.mem_alloc(sample.nbytes)
-            allocations.append(alloc)
-            bindings.append(int(alloc))
-        return allocations, bindings
+    def _allocate_memory(self):
+
+        self.codeword_addr = cuda.mem_alloc(
+            np.empty(self.codeword_shape, dtype=self.target_dtype).nbytes
+        )
+
+        self.frame_addr = cuda.mem_alloc(
+            np.empty(self.frame_shape, dtype=self.target_dtype).nbytes
+        )
+
+        self.interp_input_addr = cuda.mem_alloc(
+            np.empty(self.interp_input_shape, dtype=self.target_dtype).nbytes
+        )
+
+        self.ssf_input_addr = cuda.mem_alloc(
+            np.empty(self.ssf_input_shape, dtype=self.target_dtype).nbytes
+        )
+
+        self.ssf_est_addr = cuda.mem_alloc(
+            np.empty(self.frame_shape, dtype=self.target_dtype).nbytes
+        )
+
+        self.bw_input_addr = cuda.mem_alloc(
+            np.empty(self.bw_allocator_input_shape, dtype=self.target_dtype).nbytes
+        )
+
+        self.bw_alloc_addr = cuda.mem_alloc(
+            np.empty((), dtype=np.int).nbytes
+        )
+
+        self.snr_addr = cuda.mem_alloc(
+            self.snr.nbytes
+        )
 
     def _get_video_frames(self, source_fn):
         self.video = cv2.VideoCapture(source_fn)
@@ -264,8 +295,13 @@ class deepwive_v1_source(gr.sync_block):
             flag, frame = self.video.read()
 
         self.frame_shape = frame_shape
-        self.codeword_shape = [1, self.model_cout, frame_shape[2]//16, frame_shape[3]//16]
+        self.interp_input_shape = (1, 21, frame_shape[2], frame_shape[3])
+        self.ssf_input_shape = (1, 6, frame_shape[2], frame_shape[3])
+        self.bw_allocator_input_shape = (1, 21*(self.gop_size-2)+6, frame_shape[2], frame_shape[3])
+        self.codeword_shape = (1, self.model_cout, frame_shape[2]//16, frame_shape[3]//16)
+
         self.ch_uses = np.prod(self.codeword_shape[1:]) // 2
+        self.n_packets = self.ch_uses // self.packet_len
         self.n_padding = (self.packet_len - (self.ch_uses % self.packet_len)) % self.packet_len
         return frames
 
@@ -280,19 +316,16 @@ class deepwive_v1_source(gr.sync_block):
         self.cfx.push()
 
         output = np.empty(self.codeword_shape, dtype=self.target_dtype)
-        input_allocations, input_bindings = self._allocate_memory((frame, snr))
-        output_allocations, output_bindings = self._allocate_memory((output))
 
         # TODO factor execution code for generalisation
-        d_input_frame = input_allocations[0]
-        d_input_snr = input_allocations[1]
-        d_output = output_allocations[0]
-        bindings = input_bindings + output_bindings
+        bindings = [int(self.frame_addr),
+                    int(self.snr_addr),
+                    int(self.codeword_addr)]
 
-        cuda.memcpy_htod_async(d_input_frame, frame, self.stream)
-        cuda.memcpy_htod_async(d_input_snr, snr, self.stream)
+        cuda.memcpy_htod_async(self.frame_addr, frame, self.stream)
+        cuda.memcpy_htod_async(self.snr_addr, snr, self.stream)
         self.key_encoder.execute_async_v2(bindings, self.stream.handle, None)
-        cuda.memcpy_dtoh_async(output, d_output, self.stream)
+        cuda.memcpy_dtoh_async(output, self.codeword_addr, self.stream)
 
         self.stream.synchronize()
 
@@ -329,18 +362,15 @@ class deepwive_v1_source(gr.sync_block):
         ), dim=1).numpy()
 
         output = np.empty(self.codeword_shape, dtype=self.target_dtype)
-        input_allocations, input_bindings = self._allocate_memory((interp_input, snr))
-        output_allocations, output_bindings = self._allocate_memory((output))
 
-        d_interp_input = input_allocations[0]
-        d_input_snr = input_allocations[1]
-        d_output = output_allocations[0]
-        bindings = input_bindings + output_bindings
+        bindings = [int(self.interp_input_addr),
+                    int(self.snr_addr),
+                    int(self.codeword_addr)]
 
-        cuda.memcpy_htod_async(d_interp_input, interp_input, self.stream)
-        cuda.memcpy_htod_async(d_input_snr, snr, self.stream)
+        cuda.memcpy_htod_async(self.interp_input_addr, interp_input, self.stream)
+        cuda.memcpy_htod_async(self.snr_addr, snr, self.stream)
         self.key_encoder.execute_async_v2(bindings, self.stream.handle, None)
-        cuda.memcpy_dtoh_async(output, d_output, self.stream)
+        cuda.memcpy_dtoh_async(output, self.codeword_addr, self.stream)
 
         self.stream.synchronize()
 
@@ -356,17 +386,14 @@ class deepwive_v1_source(gr.sync_block):
         self.cfx.push()
 
         output = np.empty(frame.shape, dtype=self.target_dtype)
-        input = np.concatenate((frame, ref_frame), axis=1)
-        input_allocations, input_bindings = self._allocate_memory((input))
-        output_allocations, output_bindings = self._allocate_memory((output))
+        ssf_input = np.concatenate((frame, ref_frame), axis=1)
 
-        d_input = input_allocations[0]
-        d_output = output_allocations[0]
-        bindings = input_bindings + output_bindings
+        bindings = [int(self.ssf_input_addr),
+                    int(self.ssf_est_addr)]
 
-        cuda.memcpy_htod_async(d_input, input, self.stream)
+        cuda.memcpy_htod_async(self.ssf_input_addr, ssf_input, self.stream)
         self.ssf_net.execute_async_v2(bindings, self.stream.handle, None)
-        cuda.memcpy_dtoh_async(output, d_output, self.stream)
+        cuda.memcpy_dtoh_async(output, self.ssf_est_addr, self.stream)
 
         self.stream.synchronize()
 
@@ -389,67 +416,6 @@ class deepwive_v1_source(gr.sync_block):
         frame = np.expand_dims(frame, axis=0) / 255.
         frame = np.ascontiguousarray(frame, dtype=self.target_dtype)
         return frame
-
-    def test_key_frame_encode(self, frame, snr):
-        f = open(self.model_fn[0], 'rb')
-        self.runtime = trt.Runtime(trt.Logger(trt.Logger.WARNING))
-
-        engine = self.runtime.deserialize_cuda_engine(f.read())
-        context = engine.create_execution_context()
-
-        output = np.empty([1, 240, self.test_frame.shape[2]//16, self.test_frame.shape[3]//16],
-                          dtype=self.target_dtype)
-
-        d_input_img = cuda.mem_alloc(self.test_frame.nbytes)
-        d_input_snr = cuda.mem_alloc(self.snr.nbytes)
-        d_output = cuda.mem_alloc(output.nbytes)
-
-        bindings = [int(d_input_img), int(d_input_snr), int(d_output)]
-
-        self.stream = cuda.Stream()
-
-        cuda.memcpy_htod_async(d_input_img, frame, self.stream)
-        cuda.memcpy_htod_async(d_input_snr, snr, self.stream)
-        context.execute_async_v2(bindings, self.stream.handle, None)
-        cuda.memcpy_dtoh_async(output, d_output, self.stream)
-        self.stream.synchronize()
-        return output
-
-    def test_key_frame_decode(self, codeword, snr):
-        f = open(self.model_fn[1], 'rb')
-
-        engine = self.runtime.deserialize_cuda_engine(f.read())
-        context = engine.create_execution_context()
-
-        output = np.empty(self.test_frame.shape, dtype=self.target_dtype)
-
-        d_input_codeword = cuda.mem_alloc(codeword.nbytes)
-        d_input_snr = cuda.mem_alloc(self.snr.nbytes)
-        d_output = cuda.mem_alloc(output.nbytes)
-
-        bindings = [int(d_input_codeword), int(d_input_snr), int(d_output)]
-
-        cuda.memcpy_htod_async(d_input_codeword, codeword, self.stream)
-        cuda.memcpy_htod_async(d_input_snr, snr, self.stream)
-        context.execute_async_v2(bindings, self.stream.handle, None)
-        cuda.memcpy_dtoh_async(output, d_output, self.stream)
-        self.stream.synchronize()
-        return output
-
-    def test_work(self):
-        self.test_frame = self._get_test_frame(self.source_fn)
-        codeword = self.test_key_frame_encode(self.test_frame, self.snr)
-        codeword_shape = codeword.shape
-        codeword = codeword.reshape(1, -1)
-        ch_uses = codeword.shape[1]
-        ch_input = (codeword / np.linalg.norm(codeword, ord=2, axis=1, keepdims=True)) * np.sqrt(ch_uses)
-        noise_stddev = np.sqrt(10**(-self.snr/10))
-        awgn = np.random.randn(*ch_input.shape) * noise_stddev
-        ch_output = ch_input + awgn.astype(self.target_dtype)
-        decoder_input = ch_output.reshape(codeword_shape)
-        decoded_frame = self.test_key_frame_decode(decoder_input, self.snr)
-        mse = np.mean((decoded_frame - self.test_frame)**2)
-        return self.test_frame, decoded_frame, mse
 
     def work(self, input_items, output_items):
         payload_out = output_items[0]

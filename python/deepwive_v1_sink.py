@@ -82,6 +82,8 @@ class deepwive_v1_sink(gr.basic_block):
         self.window_name = 'video_stream'
         self._open_window(self.frame_shape[3], self.frame_shape[2], self.window_name)
 
+        self._allocate_memory()
+
         self._reset()
 
         self.prev_packet_idx = -1
@@ -99,14 +101,22 @@ class deepwive_v1_sink(gr.basic_block):
         context = engine.create_execution_context()
         return context
 
-    def _allocate_memory(self, samples):
-        allocations = []
-        bindings = []
-        for sample in samples:
-            alloc = cuda.mem_alloc(sample.nbytes)
-            allocations.append(alloc)
-            bindings.append(int(alloc))
-        return allocations, bindings
+    def _allocate_memory(self):
+        self.codeword_addr = cuda.mem_alloc(
+            np.empty(self.codeword_shape, dtype=self.target_dtype).nbytes
+        )
+
+        self.frame_addr = cuda.mem_alloc(
+            np.empty(self.frame_shape, dtype=self.target_dtype).nbytes
+        )
+
+        self.interp_output_addr = cuda.mem_alloc(
+            np.empty(self.interp_output_shape, dtype=self.target_dtype).nbytes
+        )
+
+        self.snr_addr = cuda.mem_alloc(
+            self.snr.nbytes
+        )
 
     def _get_video_frames(self, source_fn):
         self.video = cv2.VideoCapture(source_fn)
@@ -123,10 +133,12 @@ class deepwive_v1_sink(gr.basic_block):
 
             flag, frame = self.video.read()
 
-        self.codeword_shape = [1, self.model_cout, frame_shape[2]//16, frame_shape[3]//16]
+        self.frame_shape = frame_shape
+        self.interp_output_shape = (1, 12, frame_shape[2], frame_shape[3])
+        self.codeword_shape = (1, self.model_cout, frame_shape[2]//16, frame_shape[3]//16)
+
         self.ch_uses = np.prod(self.codeword_shape[1:]) // 2
         self.n_packets = self.ch_uses // self.packet_len
-        self.frame_shape = frames[0].shape
         self.n_padding = (self.packet_len - (self.ch_uses % self.packet_len)) % self.packet_len
         return frames
 
@@ -141,18 +153,15 @@ class deepwive_v1_sink(gr.basic_block):
         self.cfx.push()
 
         output = np.empty(self.frame_shape, dtype=self.target_dtype)
-        input_allocations, input_bindings = self._allocate_memory((codeword, snr))
-        output_allocations, output_bindings = self._allocate_memory((output))
 
-        d_input_codeword = input_allocations[0]
-        d_input_snr = input_allocations[1]
-        d_output = output_allocations[0]
-        bindings = input_bindings + output_bindings
+        bindings = [int(self.codeword_addr),
+                    int(self.snr_addr),
+                    int(self.frame_addr)]
 
-        cuda.memcpy_htod_async(d_input_codeword, codeword, self.stream)
-        cuda.memcpy_htod_async(d_input_snr, snr, self.stream)
+        cuda.memcpy_htod_async(self.codeword_addr, codeword, self.stream)
+        cuda.memcpy_htod_async(self.snr_addr, snr, self.stream)
         self.key_decoder.execute_async_v2(bindings, self.stream.handle, None)
-        cuda.memcpy_dtoh_async(output, d_output, self.stream)
+        cuda.memcpy_dtoh_async(output, self.frame_addr, self.stream)
 
         # TODO can probably synchronize many frames at once; depending on optimization
         self.stream.synchronize()
