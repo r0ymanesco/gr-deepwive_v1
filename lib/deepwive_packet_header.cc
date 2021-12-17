@@ -139,34 +139,34 @@ deepwive_packet_header::~deepwive_packet_header() {}
     const std::vector<tag_t> &tags)
 {
 
-  unsigned frame_idx = 0;
-  unsigned packet_idx = 0;
+  unsigned first_flag = 0;
+  unsigned alloc_idx = 0;
 
   for (size_t i = 0; i < tags.size(); i++)
   {
-    if (pmt::equal(tags[i].key, pmt::intern("frame_idx")))
+    if (pmt::equal(tags[i].key, pmt::intern("first_flag")))
     {
-      frame_idx = static_cast<unsigned int>(pmt::to_long(tags[i].value));
+      first_flag = static_cast<unsigned int>(pmt::to_long(tags[i].value));
     }
 
-    if (pmt::equal(tags[i].key, pmt::intern("packet_idx")))
+    if (pmt::equal(tags[i].key, pmt::intern("alloc_idx")))
     {
-      packet_idx = static_cast<unsigned int>(pmt::to_long(tags[i].value));
+      alloc_idx = static_cast<unsigned int>(pmt::to_long(tags[i].value));
     }
   }
 
   packet_len &= 0x0FF;
   Md_crc_impl.reset();
-  Md_crc_impl.process_bytes((void const *)&frame_idx, 2);
-  Md_crc_impl.process_bytes((void const *)&packet_idx, 1);
+  Md_crc_impl.process_bytes((void const *)&first_flag, 1);
+  Md_crc_impl.process_bytes((void const *)&alloc_idx, 11);
   unsigned char crc = Md_crc_impl();
 
   memset(out, 0x00, Md_header_len);
   int k = 0;
   for (int i = 0; i < 3; i++) // FIXME this is hard coded to give 48 bits, should find a more flexible solution
   {
-    insert_into_header_buffer(out, k, frame_idx, 7);
-    insert_into_header_buffer(out, k, packet_idx, 9);
+    insert_into_header_buffer(out, k, first_flag, 1);
+    insert_into_header_buffer(out, k, alloc_idx, 11);
   }
   return true;
 
@@ -191,18 +191,30 @@ deepwive_packet_header::~deepwive_packet_header() {}
 
   int k = 0; // Position in "in"
 
-  std::vector<unsigned> header_frame_idx(3);
-  std::vector<unsigned> header_packet_idx(3);
+  std::vector<unsigned> header_first_flag(4);
+  std::vector<unsigned> header_alloc_idx(4);
 
-  for (int i = 0; i < 3; i++)
+  for (int i = 0; i < 4; i++)
   {
-    header_frame_idx[i] = extract_from_header_buffer(in_descrambled, k, 7);
-    header_packet_idx[i] = extract_from_header_buffer(in_descrambled, k, 9);
+    header_first_flag[i] = extract_from_header_buffer(in_descrambled, k, 1);
+    header_alloc_idx[i] = extract_from_header_buffer(in_descrambled, k, 11);
     // unsigned header_crc = extract_from_header_buffer(in_descrambled,k,8);
   }
 
-  header_frame_idx[0] = (header_frame_idx[0] & header_frame_idx[1]) | (header_frame_idx[1] & header_frame_idx[2]) | (header_frame_idx[0] & header_frame_idx[2]);
-  header_packet_idx[0] = (header_packet_idx[0] & header_packet_idx[1]) | (header_packet_idx[1] & header_packet_idx[2]) | (header_packet_idx[0] & header_packet_idx[2]);
+  header_first_flag[0] = ((header_first_flag[0] & header_first_flag[1])
+                          | (header_first_flag[0] & header_first_flag[2])
+                          | (header_first_flag[0] & header_first_flag[3])
+                          | (header_first_flag[1] & header_first_flag[2])
+                          | (header_first_flag[1] & header_first_flag[3])
+                          | (header_first_flag[2] & header_first_flag[3])
+  );
+  header_alloc_idx[0] = ((header_alloc_idx[0] & header_alloc_idx[1])
+                          | (header_alloc_idx[0] & header_alloc_idx[2])
+                          | (header_alloc_idx[0] & header_alloc_idx[3])
+                          | (header_alloc_idx[1] & header_alloc_idx[2])
+                          | (header_alloc_idx[1] & header_alloc_idx[3])
+                          | (header_alloc_idx[2] & header_alloc_idx[3])
+  );
 
   if (k > Md_header_len)
   {
@@ -215,12 +227,12 @@ deepwive_packet_header::~deepwive_packet_header() {}
   tagH.value = pmt::from_long(packet_len);
   tags.push_back(tagH);
 
-  tagH.key = pmt::intern("frame_idx");
-  tagH.value = pmt::from_long(header_frame_idx[0]);
+  tagH.key = pmt::intern("first");
+  tagH.value = pmt::from_long(header_first_flag[0]);
   tags.push_back(tagH);
 
-  tagH.key = pmt::intern("packet_idx");
-  tagH.value = pmt::from_long(header_packet_idx[0]);
+  tagH.key = pmt::intern("alloc_idx");
+  tagH.value = pmt::from_long(header_alloc_idx[0]);
   tags.push_back(tagH);
 
   // std::cout << "frame_idx " << header_frame_idx[0] << std::endl;

@@ -200,6 +200,7 @@ class deepwive_v1_source(gr.sync_block):
         self.model_fn = model_fn
         self.model_cout = model_cout
         self.packet_len = packet_len
+        # TODO can increase packet_len to codeword_len, need to change n_symbols at rx
         self.snr = np.array([[snr]], dtype=self.target_dtype)
         self.use_fp16 = use_fp16
 
@@ -208,7 +209,6 @@ class deepwive_v1_source(gr.sync_block):
          self.interp_encoder,
          self.ssf_net,
          self.bw_allocator) = self._get_context(model_fn)
-
         # self.key_encoder = self._get_context(model_fn)
 
         self.num_chunks = num_chunks
@@ -219,8 +219,9 @@ class deepwive_v1_source(gr.sync_block):
 
         self.video_frames = self._get_video_frames(source_fn)
         self.video_frames = self.video_frames[:125]  # FIXME remove this in final version
-        self.n_frames = len(self.video_frames)
-        self.frame_idx = -1
+
+        self.gop_idx = -1
+        self.n_gops = (len(self.video_frames) - 1) // (self.gop_size - 1)
         self.pair_idx = 0
         self.packet_idx = 0
 
@@ -246,38 +247,15 @@ class deepwive_v1_source(gr.sync_block):
         return contexts
 
     def _allocate_memory(self):
-
-        self.codeword_addr = cuda.mem_alloc(
-            np.empty(self.codeword_shape, dtype=self.target_dtype).nbytes
-        )
-
-        self.frame_addr = cuda.mem_alloc(
-            np.empty(self.frame_shape, dtype=self.target_dtype).nbytes
-        )
-
-        self.interp_input_addr = cuda.mem_alloc(
-            np.empty(self.interp_input_shape, dtype=self.target_dtype).nbytes
-        )
-
-        self.ssf_input_addr = cuda.mem_alloc(
-            np.empty(self.ssf_input_shape, dtype=self.target_dtype).nbytes
-        )
-
-        self.ssf_est_addr = cuda.mem_alloc(
-            np.empty(self.frame_shape, dtype=self.target_dtype).nbytes
-        )
-
-        self.bw_input_addr = cuda.mem_alloc(
-            np.empty(self.bw_allocator_input_shape, dtype=self.target_dtype).nbytes
-        )
-
-        self.bw_alloc_addr = cuda.mem_alloc(
-            np.empty((), dtype=np.int).nbytes
-        )
-
-        self.snr_addr = cuda.mem_alloc(
-            self.snr.nbytes
-        )
+        self.codeword_addr = cuda.mem_alloc(np.empty(self.codeword_shape, dtype=self.target_dtype).nbytes)
+        self.frame_addr = cuda.mem_alloc(np.empty(self.frame_shape, dtype=self.target_dtype).nbytes)
+        self.interp_input_addr = cuda.mem_alloc(np.empty(self.interp_input_shape, dtype=self.target_dtype).nbytes)
+        self.ssf_input_addr = cuda.mem_alloc(np.empty(self.ssf_input_shape, dtype=self.target_dtype).nbytes)
+        self.ssf_est_addr = cuda.mem_alloc(np.empty(self.frame_shape, dtype=self.target_dtype).nbytes)
+        self.bw_input_addr = cuda.mem_alloc(np.empty(self.bw_allocator_input_shape, dtype=self.target_dtype).nbytes)
+        # TODO check if this needs to be target_dtype
+        self.bw_alloc_addr = cuda.mem_alloc(np.empty((1, ), dtype=int).nbytes)
+        self.snr_addr = cuda.mem_alloc(self.snr.nbytes)
 
     def _get_video_frames(self, source_fn):
         self.video = cv2.VideoCapture(source_fn)
@@ -311,7 +289,7 @@ class deepwive_v1_source(gr.sync_block):
         bw_set = [split_list_by_val(bw, 0) for bw in bw_set]
         self.bw_set = [[sum(bw) for bw in alloc] for alloc in bw_set]
 
-    def key_frame_encode(self, frame, snr):
+    def _key_frame_encode(self, frame, snr):
         threading.Thread.__init__(self)
         self.cfx.push()
 
@@ -326,18 +304,15 @@ class deepwive_v1_source(gr.sync_block):
         cuda.memcpy_htod_async(self.snr_addr, snr, self.stream)
         self.key_encoder.execute_async_v2(bindings, self.stream.handle, None)
         cuda.memcpy_dtoh_async(output, self.codeword_addr, self.stream)
-
         self.stream.synchronize()
 
         # TODO add block control to send fewer blocks
-        ch_codeword = self.power_normalize(output)
-        zero_pad = np.zeros((self.n_padding, 2), dtype=self.target_dtype)
-        ch_input = np.concatenate((ch_codeword, zero_pad), axis=0).astype(self.target_dtype)
+        ch_codeword = self._power_normalize(output)
 
         self.cfx.pop()
-        return ch_input
+        return ch_codeword
 
-    def interp_frame_encode(self, frame, ref_left, ref_right, snr):
+    def _interp_frame_encode(self, frame, ref_left, ref_right, snr):
         threading.Thread.__init__(self)
         self.cfx.push()
 
@@ -358,8 +333,7 @@ class deepwive_v1_source(gr.sync_block):
             torch.from_numpy(frame),
             w1, w2,
             r1, r2,
-            flow1, flow2
-        ), dim=1).numpy()
+            flow1, flow2), dim=1).numpy().astype(self.target_dtype)
 
         output = np.empty(self.codeword_shape, dtype=self.target_dtype)
 
@@ -371,21 +345,18 @@ class deepwive_v1_source(gr.sync_block):
         cuda.memcpy_htod_async(self.snr_addr, snr, self.stream)
         self.key_encoder.execute_async_v2(bindings, self.stream.handle, None)
         cuda.memcpy_dtoh_async(output, self.codeword_addr, self.stream)
-
         self.stream.synchronize()
 
-        ch_codeword = self.power_normalize(output)
-        zero_pad = np.zeros((self.n_padding, 2), dtype=self.target_dtype)
-        ch_input = np.concatenate((ch_codeword, zero_pad), axis=0).astype(self.target_dtype)
+        ch_codeword = self._power_normalize(output)
 
         self.cfx.pop()
-        return ch_input
+        return ch_codeword, interp_input
 
-    def ssf_estimate(self, frame, ref_frame):
+    def _ssf_estimate(self, frame, ref_frame):
         threading.Thread.__init__(self)
         self.cfx.push()
 
-        output = np.empty(frame.shape, dtype=self.target_dtype)
+        output = np.empty(self.frame_shape, dtype=self.target_dtype)
         ssf_input = np.concatenate((frame, ref_frame), axis=1)
 
         bindings = [int(self.ssf_input_addr),
@@ -394,28 +365,68 @@ class deepwive_v1_source(gr.sync_block):
         cuda.memcpy_htod_async(self.ssf_input_addr, ssf_input, self.stream)
         self.ssf_net.execute_async_v2(bindings, self.stream.handle, None)
         cuda.memcpy_dtoh_async(output, self.ssf_est_addr, self.stream)
-
         self.stream.synchronize()
 
         self.cfx.pop()
         return output
 
-    def power_normalize(self, codeword):
+    def _allocate_bw(self, gop_state, snr):
+        threading.Thread.__init__(self)
+        self.cfx.push()
+
+        output = np.empty((1, ), dtype=int)
+
+        bindings = [int(self.bw_input_addr),
+                    int(self.bw_alloc_addr)]
+
+        cuda.memcpy_htod_async(self.bw_input_addr, gop_state, self.stream)
+        self.ssf_net.execute_async_v2(bindings, self.stream.handle, None)
+        cuda.memcpy_dtoh_async(output, self.bw_alloc_addr, self.stream)
+        self.stream.synchronize()
+
+        self.cfx.pop()
+        return output[0]
+
+    def _power_normalize(self, codeword):
         codeword = codeword.reshape(1, -1)
-        ch_uses = codeword.shape[1]
-        ch_input = (codeword / np.linalg.norm(codeword, ord=2, axis=1, keepdims=True)) * np.sqrt(ch_uses)
-        ch_input = ch_input.reshape(-1, 2)
+        n_vals = codeword.shape[1]
+        normalized = (codeword / np.linalg.norm(codeword, ord=2, axis=1, keepdims=True)) * np.sqrt(n_vals)
+        ch_input = normalized.reshape(self.codeword_shape)
         return ch_input.astype(self.target_dtype)
 
-    def _get_test_frame(self, source_fn):
-        self.vid = cv2.VideoCapture(source_fn)
-        flag, frame = self.vid.read()
-        assert flag
-        frame = np.swapaxes(frame, 0, 1)
-        frame = np.swapaxes(frame, 0, 2)
-        frame = np.expand_dims(frame, axis=0) / 255.
-        frame = np.ascontiguousarray(frame, dtype=self.target_dtype)
-        return frame
+    def _encode_gop(self, gop):
+        gop_state = [gop[0]] + [None] * (self.gop_size - 2) + [gop[-1]]
+
+        last_codeword = self._key_frame_encode(gop[-1], self.snr)
+        codewords = [last_codeword] + [None] * (self.gop_size - 2)
+        for pred_idx in (2, 1, 3):
+            if pred_idx == 2:
+                dist = 2
+            else:
+                dist = 1
+
+            interp_codeword, interp_input = self._interp_frame_encode(
+                gop[pred_idx],
+                gop[pred_idx-dist],
+                gop[pred_idx+dist],
+                self.snr
+            )
+            gop_state[pred_idx] = interp_input
+            codewords[pred_idx] = interp_codeword
+
+        gop_state = np.concatenate(gop_state, axis=1, dtype=self.target_dtype)
+        bw_allocation_idx = self._allocate_bw(gop_state, self.snr)
+        bw_allocation = self.bw_set[bw_allocation_idx]
+
+        ch_codewords = [None] * (self.gop_size - 1)
+        for i, codeword in enumerate(codewords):
+            alloc = bw_allocation[i] * self.chunk_size
+            ch_codewords[i] = codeword[:, :alloc].reshape(-1, 2)
+            # first codeword is the last frame; need to decode first
+
+        zero_pad = np.zeros(self.n_padding, 2)
+        ch_codeword = np.concatenate(ch_codewords.append(zero_pad), axis=0, dtype=self.target_dtype)
+        return ch_codeword, bw_allocation_idx
 
     def work(self, input_items, output_items):
         payload_out = output_items[0]
@@ -426,37 +437,37 @@ class deepwive_v1_source(gr.sync_block):
 
         while payload_idx < len(payload_out):
             if self.pair_idx % self.ch_uses == 0:
-                self.frame_idx = (self.frame_idx + 1) % self.n_frames
+                self.gop_idx = (self.gop_idx + 1) % self.n_gops
                 self.pair_idx = 0
                 self.packet_idx = 0
+                self.curr_codeword = None
 
-                # start_time = time.time()
-                self.curr_codeword = self.key_frame_encode(self.video_frames[self.frame_idx],
-                                                           self.snr)
-                # end_time = time.time()
-                # print('encode time: {}'.format(end_time - start_time))
+            if self.curr_codeword is None:
+                if self.gop_idx == 0:
+                    self.curr_codeword = self._key_frame_encode(self.video_frames[0], self.snr)
+                    self.first = 1.
+                else:
+                    curr_gop = self.video_frames[self.gop_idx*(self.gop_size-1):(self.gop_idx+1)*(self.gop_size-1)+1]
+                    self.curr_codeword, self.curr_bw_allocation = self._encode_gop(curr_gop)
+                    self.first = 0
+
+            assert self.curr_codeword.shape[0] == self.ch_uses
 
             if self.pair_idx % self.packet_len == 0:
-                # print('packet_len {}'.format(self.packet_len))
-                # print('frame_idx {}'.format(self.frame_idx))
-                # print('packet_idx {}'.format(self.packet_idx))
+                self.add_item_tag(0, payload_idx + self.nitems_written(0), pmt.intern('packet_len'), pmt.from_long(self.packet_len + 48))
 
-                self.add_item_tag(0, payload_idx + self.nitems_written(0), pmt.intern('packet_len'), pmt.from_long(144))
+                first_flag_bit = [self.first]
 
-                frame_idx_bits = '{0:07b}'.format(self.frame_idx)
-                frame_idx_bits = [np.float(b) for b in frame_idx_bits]
-                frame_idx_bits = frame_idx_bits[::-1]
-
-                # if self.packet_idx > 64:
-                #     ipdb.set_trace()
-                packet_idx_bits = '{0:09b}'.format(self.packet_idx)
-                packet_idx_bits = [np.float(b) for b in packet_idx_bits]
-                packet_idx_bits = packet_idx_bits[::-1]
+                allocation_bits = '{0:011b}'.format(self.curr_bw_allocation)
+                allocation_bits = [np.float(b) for b in allocation_bits]
+                allocation_bits.extend(alloc_bits[::-1])
 
                 # print('Tx frame_idx: {}, packet_idx: {}'.format(self.frame_idx, self.packet_idx))
 
-                header_bits = (frame_idx_bits + packet_idx_bits) * 3
-                # TODO can use better FEC methods
+                header_bits = (frame_idx_bits + packet_idx_bits) * 4
+                assert len(header_bits) == 48  # NOTE this is equal to n_occupied_carriers
+                # TODO use better FEC methods
+                # TODO if last gop dropped then use keyframe from last gop to decode
 
                 for bit in header_bits:
                     # TODO add method for different header modulations
