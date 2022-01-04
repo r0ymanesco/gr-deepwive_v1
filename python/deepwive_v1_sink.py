@@ -20,13 +20,16 @@
 
 
 import cv2
+import math
 import time
+import numbers
 import numpy as np
-from drawnow import drawnow
 import matplotlib.pyplot as plt
+import ipdb
+
+from drawnow import drawnow
 from collections import Counter
 from itertools import combinations
-import ipdb
 
 import torch
 import torch.nn as nn
@@ -130,10 +133,6 @@ def ss_warp(x, flo):
     grid = torch.cat((xx, yy, zz), 1).float()
     grid = grid.unsqueeze(2)
 
-    if x.is_cuda:
-        grid = grid.to(x.device)
-    # vgrid = Variable(grid) + flo
-    grid.requires_grad = True
     vgrid = grid + flo
 
     # scale grid to [-1,1]
@@ -188,9 +187,9 @@ class deepwive_v1_sink(gr.basic_block):
     docstring for block deepwive_v1_sink
     """
 
-    def __init__(self, source_fn, model_fn, model_cout, packet_len=96,
-                 snr=20, num_chunks=20, gop_size=5,
-                 use_fp16=False):
+    def __init__(self, source_fn, model_cout,
+                 key_decoder_fn, interp_decoder_fn,
+                 packet_len=96, snr=20, num_chunks=20, gop_size=5, use_fp16=False):
         gr.sync_block.__init__(self,
                                name="deepwive_v1_sink",
                                in_sig=None,
@@ -204,33 +203,31 @@ class deepwive_v1_sink(gr.basic_block):
 
         if use_fp16:
             self.target_dtype = np.float16
-            assert 'fp16' in model_fn
         else:
             self.target_dtype = np.float32
 
         self.source_fn = source_fn
-        self.model_fn = model_fn
         self.model_cout = model_cout
         self.packet_len = packet_len
         self.snr = np.array([[snr]], dtype=self.target_dtype)
         self.use_fp16 = use_fp16
 
         self._get_runtime(trt.Logger(trt.Logger.WARNING))
-        (self.key_decoder,
-         self.interp_decoder) = self._get_context(model_fn)
-        # self.key_decoder = self._get_context(model_fn)
+        self.key_decoder = self._get_context(key_decoder_fn)
+        self.interp_decoder = self._get_context(interp_decoder_fn)
 
         self.num_chunks = num_chunks
         self.chunk_size = model_cout // num_chunks
         self.gop_size = gop_size
         self.ssf_sigma = 0.01
         self.ssf_levels = 5
+        self._get_bw_set()
 
         self.video_frames = self._get_video_frames(source_fn)
         self.video_frames = self.video_frames[:125]  # FIXME remove this in final version
         self.n_frames = len(self.video_frames)
         self.window_name = 'video_stream'
-        self._open_window(self.frame_shape[3], self.frame_shape[2], self.window_name)
+        # self._open_window(self.frame_shape[3], self.frame_shape[2], self.window_name)
 
         self._allocate_memory()
         self._reset()
@@ -241,19 +238,11 @@ class deepwive_v1_sink(gr.basic_block):
         self.runtime = trt.Runtime(logger)
         self.stream = cuda.Stream()
 
-    def _get_context(self, model_fns):
-        # f = open(model_fn, 'rb')
-        # engine = self.runtime.deserialize_cuda_engine(f.read())
-        # context = engine.create_execution_context()
-        # return context
-
-        contexts = []
-        for fn in model_fns:
-            f = open(fn, 'rb')
-            engine = self.runtime.deserialize_cuda_engine(f.read())
-            ctx = engine.create_execution_context()
-            contexts.append(ctx)
-        return contexts
+    def _get_context(self, model_fn):
+        f = open(model_fn, 'rb')
+        engine = self.runtime.deserialize_cuda_engine(f.read())
+        context = engine.create_execution_context()
+        return context
 
     def _allocate_memory(self):
         self.codeword_addr = cuda.mem_alloc(np.empty(self.codeword_shape, dtype=self.target_dtype).nbytes)
@@ -295,7 +284,7 @@ class deepwive_v1_sink(gr.basic_block):
         bw_set = [1] * self.num_chunks + [0] * (self.gop_size-2)
         bw_set = perms_without_reps(bw_set)
         bw_set = [split_list_by_val(bw, 0) for bw in bw_set]
-        self.bw_set = [[(sum(bw)*self.chunk_size) for bw in alloc] for alloc in bw_set]
+        self.bw_set = [[sum(bw) for bw in alloc] for alloc in bw_set]
 
     def _key_frame_decode(self, codeword, snr):
         threading.Thread.__init__(self)
@@ -333,7 +322,6 @@ class deepwive_v1_sink(gr.basic_block):
         self.key_decoder.execute_async_v2(bindings, self.stream.handle, None)
         cuda.memcpy_dtoh_async(output, self.interp_output_addr, self.stream)
 
-        # TODO can probably synchronize many frames at once; depending on optimization
         self.stream.synchronize()
 
         interp_decoder_out = torch.from_numpy(output)
@@ -347,8 +335,8 @@ class deepwive_v1_sink(gr.basic_block):
         a2 = a2.repeat_interleave(3, dim=1)
         a3 = a3.repeat_interleave(3, dim=1)
 
-        pred_vol1 = generate_ss_volume(torch.from_numpy(ref_left), args.ss_sigma, 3, args.ss_levels)
-        pred_vol2 = generate_ss_volume(torch.from_numpy(ref_right), args.ss_sigma, 3, args.ss_levels)
+        pred_vol1 = generate_ss_volume(torch.from_numpy(ref_left), self.ssf_sigma, 3, self.ssf_levels)
+        pred_vol2 = generate_ss_volume(torch.from_numpy(ref_right), self.ssf_sigma, 3, self.ssf_levels)
         pred_1 = ss_warp(pred_vol1, f1.unsqueeze(2))
         pred_2 = ss_warp(pred_vol2, f2.unsqueeze(2))
 
@@ -360,21 +348,22 @@ class deepwive_v1_sink(gr.basic_block):
         codewords = codewords_vec.reshape(self.codeword_shape)
 
         if first:
-            frames = [
-                self._key_frame_decode(codewords, self.snr)
-            ]
+            assert init_frame is None
+            frames = [self._key_frame_decode(codewords, self.snr)]
         else:
             frames = [init_frame] + [None] * (self.gop_size-1)
             bw_allocation = self.bw_set[bw_allocation_idx]
-            split_idxs = [sum(bw_allocation[:i]) for i in range(1, self.gop_size-1)]
-            codewords = np.split(codewords, split_idxs)
+            split_idxs = [sum(bw_allocation[:i])*self.chunk_size
+                          for i in range(1, self.gop_size-1)]
+            codewords = np.split(codewords, split_idxs, axis=1)
 
             last_frame_codeword = codewords[0]
             zero_pad = np.zeros((1, self.model_cout-last_frame_codeword.shape[1], self.codeword_shape[2], self.codeword_shape[3]))
-            last_frame_codeword = np.concatenate((last_frame_codeword, zero_pad), dtype=self.target_dtype)
+            last_frame_codeword = np.concatenate((last_frame_codeword, zero_pad), axis=1).astype(self.target_dtype)
             last_frame = self._key_frame_decode(last_frame_codeword, self.snr)
             frames[-1] = last_frame
 
+            ipdb.set_trace()
             for pred_idx in (2, 1, 3):
                 if pred_idx == 2:
                     dist = 2
@@ -383,11 +372,16 @@ class deepwive_v1_sink(gr.basic_block):
 
                 codeword = codewords[pred_idx]
                 zero_pad = np.zeros((1, self.model_cout-codeword.shape[1], self.codeword_shape[2], self.codeword_shape[3]))
-                codeword = np.concatenate((codeword, zero_pad), dtype=self.target_dtype)
+                codeword = np.concatenate((codeword, zero_pad), axis=1).astype(self.target_dtype)
                 decoded_frame = self._interp_decode(codeword, frames[pred_idx-dist], frames[pred_idx+dist], self.snr)
                 frames[pred_idx] = decoded_frame
 
         return frames
+
+    def test_work(self):
+        codewords_vec = np.random.rand(self.ch_uses, 2).astype(self.target_dtype)
+        init_frame = np.random.rand(*self.frame_shape).astype(self.target_dtype)
+        _ = self._decode_gop(codewords_vec, 504, init_frame, first=False)
 
     def msg_handler(self, msg_pmt):
         tags = pmt.to_python(pmt.car(msg_pmt))
@@ -439,9 +433,6 @@ class deepwive_v1_sink(gr.basic_block):
             # end_time = time.time()
             # print('decode time: {}'.format(end_time - start_time))
             self._reset()
-
-        # elif (packet_idx == self.n_packets - 1) and any([v is None for v in self.curr_frame_packets]):
-        #     self._reset()
 
     def _reset(self):
         # TODO update this to reflect full scheme

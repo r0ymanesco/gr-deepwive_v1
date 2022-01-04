@@ -418,7 +418,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [392, 1716.0]
+    coordinate: [392, 1740.0]
     rotation: 0
     state: enabled
 - name: deepwive_v1_deepwive_v1_sink_0
@@ -427,8 +427,11 @@ blocks:
     affinity: ''
     alias: ''
     comment: ''
+    gop_size: '5'
+    interp_decoder_fn: '''/home/tt2114/workspace/gr-deepwive_v1/examples/test_files/interp_decoder.trt'''
+    key_decoder_fn: '''/home/tt2114/workspace/gr-deepwive_v1/examples/test_files/key_decoder.trt'''
     model_cout: '240'
-    model_fn: '''/home/tt2114/workspace/gr-deepwive_v1/examples/test_files/key_decoder.trt'''
+    num_chunks: '20'
     packet_len: packet_len
     snr: '20'
     source_fn: '''/home/tt2114/workspace/gr-deepwive_v1/examples/test_files/v_YoYo_g25_c05.avi'''
@@ -440,29 +443,32 @@ blocks:
     coordinate: [712, 1676.0]
     rotation: 0
     state: enabled
-- name: deepwive_v1_deepwive_v1_source_0
+- name: deepwive_v1_deepwive_v1_source_1
   id: deepwive_v1_deepwive_v1_source
   parameters:
     affinity: ''
     alias: ''
+    bw_allocator_fn: '''/home/tt2114/workspace/gr-deepwive_v1/examples/test_files/bw_allocator.trt'''
     comment: ''
     gop_size: '5'
+    interp_encoder_fn: '''/home/tt2114/workspace/gr-deepwive_v1/examples/test_files/interp_encoder.trt'''
+    key_encoder_fn: '''/home/tt2114/workspace/gr-deepwive_v1/examples/test_files/key_encoder.trt'''
     maxoutbuf: '0'
     minoutbuf: '0'
     model_cout: '240'
-    model_fn: '''/home/tt2114/workspace/gr-deepwive_v1/examples/test_files/key_encoder.trt'''
     num_chunks: '20'
-    packet_len: packet_len
-    snr: '20.0'
+    packet_len: '96'
+    snr: '20.'
     source_fn: '''/home/tt2114/workspace/gr-deepwive_v1/examples/test_files/v_YoYo_g25_c05.avi'''
+    ssf_net_fn: '''/home/tt2114/workspace/gr-deepwive_v1/examples/test_files/ssf_net.trt'''
     use_fp16: 'False'
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [40, 308.0]
+    coordinate: [88, 252.0]
     rotation: 0
-    state: true
+    state: enabled
 - name: digital_constellation_decoder_cb_0
   id: digital_constellation_decoder_cb
   parameters:
@@ -763,32 +769,6 @@ blocks:
     bus_source: false
     bus_structure: null
     coordinate: [984, 12.0]
-    rotation: 0
-    state: true
-- name: import_0_0
-  id: import
-  parameters:
-    alias: ''
-    comment: ''
-    imports: from deepwive_v1 import deepwive_packet_header
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [8, 100.0]
-    rotation: 0
-    state: true
-- name: import_1
-  id: import
-  parameters:
-    alias: ''
-    comment: ''
-    imports: import pycuda.autoinit
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [1192, 12.0]
     rotation: 0
     state: true
 - name: limesdr_sink_0
@@ -1169,7 +1149,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [168, 1716.0]
+    coordinate: [168, 1740.0]
     rotation: 0
     state: enabled
 - name: virtual_source_0_1
@@ -1208,7 +1188,7 @@ connections:
 - [blocks_tag_gate_0, '0', qtgui_freq_sink_x_0, '0']
 - [blocks_tag_gate_0, '0', qtgui_time_sink_x_0, '0']
 - [blocks_tagged_stream_to_pdu_0, pdus, deepwive_v1_deepwive_v1_sink_0, pdu_in]
-- [deepwive_v1_deepwive_v1_source_0, '0', digital_ofdm_carrier_allocator_cvc_0, '0']
+- [deepwive_v1_deepwive_v1_source_1, '0', digital_ofdm_carrier_allocator_cvc_0, '0']
 - [digital_constellation_decoder_cb_0, '0', digital_packet_headerparser_b_0, '0']
 - [digital_header_payload_demux_0, '0', virtual_sink_0_1, '0']
 - [digital_header_payload_demux_0, '1', virtual_sink_1, '0']

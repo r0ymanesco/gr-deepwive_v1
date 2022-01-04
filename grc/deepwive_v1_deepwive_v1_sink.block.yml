@@ -1,10 +1,13 @@
 id: deepwive_v1_deepwive_v1_sink
-label: deepwive_v1_sink
+label: Deepwive v1 Sink
 category: '[deepwive_v1]'
 
 templates:
   imports: import deepwive_v1
-  make: deepwive_v1.deepwive_v1_sink(${source_fn}, ${model_fn}, ${model_cout}, ${packet_len}, ${snr}, ${use_fp16})
+  make: |-
+    deepwive_v1.deepwive_v1_sink(${source_fn}, ${model_cout},
+    ${key_decoder_fn}, ${interp_decoder_fn},
+    ${packet_len}, ${snr}, ${num_chunks}, ${gop_size}, ${use_fp16})
 
 #  Make one 'parameters' list entry for every parameter you want settable from the GUI.
 #     Keys include:
@@ -16,13 +19,17 @@ parameters:
   label: Source (video) file
   dtype: string
 
-- id: model_fn
-  label: Model file
-  dtype: string
-
 - id: snr
   label: SNR of model
   dtype: float
+
+- id: key_decoder_fn
+  label: Key decoder engine
+  dtype: string
+
+- id: interp_decoder_fn
+  label: Interp decoder engine
+  dtype: string
 
 - id: model_cout
   label: Codeword cout
@@ -30,6 +37,14 @@ parameters:
 
 - id: packet_len
   label: Packet length
+  dtype: int
+
+- id: num_chunks
+  label: Number of BW chunks
+  dtype: int
+
+- id: gop_size
+  label: GoP size
   dtype: int
 
 - id: use_fp16

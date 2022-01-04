@@ -4,7 +4,10 @@ category: '[deepwive_v1]'
 
 templates:
   imports: import deepwive_v1
-  make: deepwive_v1.deepwive_v1_source(${source_fn}, ${model_fn}, ${model_cout}, ${packet_len}, ${snr}, ${num_chunks}, ${gop_size}, ${use_fp16})
+  make: |-
+    deepwive_v1.deepwive_v1_source(${source_fn}, ${model_cout},
+    ${key_encoder_fn}, ${interp_encoder_fn}, ${ssf_net_fn}, ${bw_allocator_fn},
+    ${packet_len}, ${snr}, ${num_chunks}, ${gop_size}, ${use_fp16})
 
 #  Make one 'parameters' list entry for every parameter you want settable from the GUI.
 #     Keys include:
@@ -17,17 +20,29 @@ parameters:
   label: Source (video) file
   dtype: string
 
-- id: model_fn
-  label: Model file
+- id: model_cout
+  label: Codeword cout
+  dtype: int
+
+- id: key_encoder_fn
+  label: Key encoder engine
+  dtype: string
+
+- id: interp_encoder_fn
+  label: Interp encoder engine
+  dtype: string
+
+- id: ssf_net_fn
+  label: SSF estimator engine
+  dtype: string
+
+- id: bw_allocator_fn
+  label: BW allocator engine
   dtype: string
 
 - id: snr
   label: SNR of model
   dtype: float
-
-- id: model_cout
-  label: Codeword cout
-  dtype: int
 
 - id: packet_len
   label: Packet length
@@ -44,10 +59,6 @@ parameters:
 - id: use_fp16
   label: Use FP16 precision
   dtype: bool
-
-# - id: test_mode
-#   label: Test code (don't use)
-#   dtype: bool
 
 #  Make one 'inputs' list entry per input and one 'outputs' list entry per output.
 #  Keys include:
