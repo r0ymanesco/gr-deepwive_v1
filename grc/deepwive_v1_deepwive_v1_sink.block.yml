@@ -19,10 +19,6 @@ parameters:
   label: Source (video) file
   dtype: string
 
-- id: snr
-  label: SNR of model
-  dtype: float
-
 - id: key_decoder_fn
   label: Key decoder engine
   dtype: string
@@ -34,6 +30,10 @@ parameters:
 - id: model_cout
   label: Codeword cout
   dtype: int
+
+- id: snr
+  label: SNR of model
+  dtype: float
 
 - id: packet_len
   label: Packet length

@@ -115,6 +115,7 @@ deepwive_packet_header::~deepwive_packet_header() {}
   for (int i = 0; i < number_of_bits_to_copy && currentOffset < Md_header_len; i += Md_bits_per_byte, currentOffset++)
   {
     out[currentOffset] = (unsigned char)((value_to_insert >> i) & d_mask);
+    // out[currentOffset] = (unsigned char)(value_to_insert >> i);
   }
 }
 
@@ -127,7 +128,8 @@ deepwive_packet_header::~deepwive_packet_header() {}
 
   for (int i = 0; i < size_of_field && currentOffset < Md_header_len; i += Md_bits_per_byte, currentOffset++)
   {
-    result |= (((int)in[currentOffset]) & d_mask) << i;
+    // result |= (((int)in[currentOffset]) & d_mask) << i;
+    result |= (((int)in[currentOffset])) << i;
   }
 
   return result;
@@ -201,20 +203,20 @@ deepwive_packet_header::~deepwive_packet_header() {}
     // unsigned header_crc = extract_from_header_buffer(in_descrambled,k,8);
   }
 
-  header_first_flag[0] = ((header_first_flag[0] & header_first_flag[1])
-                          | (header_first_flag[0] & header_first_flag[2])
-                          | (header_first_flag[0] & header_first_flag[3])
-                          | (header_first_flag[1] & header_first_flag[2])
-                          | (header_first_flag[1] & header_first_flag[3])
-                          | (header_first_flag[2] & header_first_flag[3])
-  );
-  header_alloc_idx[0] = ((header_alloc_idx[0] & header_alloc_idx[1])
-                          | (header_alloc_idx[0] & header_alloc_idx[2])
-                          | (header_alloc_idx[0] & header_alloc_idx[3])
-                          | (header_alloc_idx[1] & header_alloc_idx[2])
-                          | (header_alloc_idx[1] & header_alloc_idx[3])
-                          | (header_alloc_idx[2] & header_alloc_idx[3])
-  );
+  // header_first_flag[0] = ((header_first_flag[0] & header_first_flag[1])
+  //                         | (header_first_flag[0] & header_first_flag[2])
+  //                         | (header_first_flag[0] & header_first_flag[3])
+  //                         | (header_first_flag[1] & header_first_flag[2])
+  //                         | (header_first_flag[1] & header_first_flag[3])
+  //                         | (header_first_flag[2] & header_first_flag[3])
+  // );
+  // header_alloc_idx[0] = ((header_alloc_idx[0] & header_alloc_idx[1])
+  //                         | (header_alloc_idx[0] & header_alloc_idx[2])
+  //                         | (header_alloc_idx[0] & header_alloc_idx[3])
+  //                         | (header_alloc_idx[1] & header_alloc_idx[2])
+  //                         | (header_alloc_idx[1] & header_alloc_idx[3])
+  //                         | (header_alloc_idx[2] & header_alloc_idx[3])
+  // );
 
   if (k > Md_header_len)
   {
@@ -235,8 +237,21 @@ deepwive_packet_header::~deepwive_packet_header() {}
   tagH.value = pmt::from_long(header_alloc_idx[0]);
   tags.push_back(tagH);
 
-  // std::cout << "frame_idx " << header_frame_idx[0] << std::endl;
-  // std::cout << "packet_idx " << header_packet_idx[0] << std::endl;
+  // FIXME some header bits not decoded correctly
+  std::cout << "first " << header_first_flag[0] << std::endl;
+  std::cout << "alloc_idx " << header_alloc_idx[0] << std::endl;
+  //
+  // if (header_alloc_idx[0] != prev_idx){
+  //   std::cout << "alloc_idx " << header_alloc_idx[0] << std::endl;
+  //   std::cout << "prev_alloc_idx " << prev_idx << std::endl;
+  //   return false;
+  // }
+  // prev_idx++;
+
+  // if (prev_idx == 374){
+  //   prev_idx = 0;
+  // }
+  // std::cout << "d_mask " << d_mask << std::endl;
 
   // To figure out how many payload OFDM symbols there are in this frame,
   // we need to go through the carrier allocation and count the number of

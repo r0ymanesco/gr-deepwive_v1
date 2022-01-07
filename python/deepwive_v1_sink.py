@@ -48,8 +48,9 @@ def to_np_img(img):
     img = np.squeeze(img, axis=0)
     img = np.swapaxes(img, 0, 2)
     img = np.swapaxes(img, 0, 1)
+    img = (img * 255).round()
     # img = img[:, :, [2, 1, 0]]
-    return img.astype(np.float32)
+    return img.astype(np.uint8)
 
 
 class GaussianSmoothing(nn.Module):
@@ -79,7 +80,7 @@ class GaussianSmoothing(nn.Module):
         kernel = 1
         meshgrids = torch.meshgrid(
             [torch.arange(size, dtype=torch.float32)
-                for size in kernel_size])
+                for size in kernel_size], indexing='ij')
         for size, std, mgrid in zip(kernel_size, sigma, meshgrids):
             mean = (size - 1) / 2
             kernel *= 1 / (std * math.sqrt(2 * math.pi)) * \
@@ -123,6 +124,8 @@ def ss_warp(x, flo):
     x: [B, C, D, H, W]
     flo: [B, 3, 1, H, W] ss flow
     """
+    in_dtype = x.dtype
+    x = x.to(torch.float32)
     B, C, D, H, W = x.size()
     # mesh grid
     xx = torch.arange(0, W).view(1, -1).repeat(H, 1)
@@ -141,18 +144,27 @@ def ss_warp(x, flo):
     vgrid[:, 2, :, :, :] = 2.0 * vgrid[:, 2, :, :].clone() - 1.0
 
     vgrid = vgrid.permute(0, 2, 3, 4, 1)
-    output = nn.functional.grid_sample(x, vgrid, align_corners=True)
+    output = F.grid_sample(x, vgrid, align_corners=True).to(in_dtype)
     return output.squeeze(2)
 
 
-def generate_ss_volume(x, sigma, kernel_size, M):
-    B, C, H, W = x.size()
+def generate_ss_volume(x, kernels):
+    in_dtype = x.dtype
+    x = x.to(torch.float32)
     out = [x]
-    for i in range(M):
-        kernel = GaussianSmoothing(C, kernel_size, (2**i) * sigma).to(x.device)
+    for _, kernel in enumerate(kernels):
         out.append(kernel(x))
     out = torch.stack(out, dim=2)
-    return out
+    return out.to(in_dtype)
+
+# def generate_ss_volume(x, sigma, kernel_size, M):
+#     B, C, H, W = x.size()
+#     out = [x]
+#     for i in range(M):
+#         kernel = GaussianSmoothing(C, kernel_size, (2**i) * sigma).to(x.device)
+#         out.append(kernel(x))
+#     out = torch.stack(out, dim=2)
+#     return out
 
 
 def perms_without_reps(s):
@@ -203,8 +215,10 @@ class deepwive_v1_sink(gr.basic_block):
 
         if use_fp16:
             self.target_dtype = np.float16
+            assert all(['fp16' in fn for fn in (key_decoder_fn, interp_decoder_fn)])
         else:
             self.target_dtype = np.float32
+            assert all(['fp16' not in fn for fn in (key_decoder_fn, interp_decoder_fn)])
 
         self.source_fn = source_fn
         self.model_cout = model_cout
@@ -221,15 +235,16 @@ class deepwive_v1_sink(gr.basic_block):
         self.gop_size = gop_size
         self.ssf_sigma = 0.01
         self.ssf_levels = 5
-        self._get_bw_set()
 
         self.video_frames = self._get_video_frames(source_fn)
         self.video_frames = self.video_frames[:125]  # FIXME remove this in final version
         self.n_frames = len(self.video_frames)
         self.window_name = 'video_stream'
-        # self._open_window(self.frame_shape[3], self.frame_shape[2], self.window_name)
+        self._open_window(self.frame_shape[3], self.frame_shape[2], self.window_name)
 
+        self._get_gaussian_kernels()
         self._allocate_memory()
+        self._get_bw_set()
         self._reset()
 
         self.prev_packet_idx = -1
@@ -280,6 +295,12 @@ class deepwive_v1_sink(gr.basic_block):
         cv2.moveWindow(window_name, 0, 0)
         cv2.setWindowTitle(window_name, window_name)
 
+    def _get_gaussian_kernels(self):
+        self.g_kernels = []
+        for i in range(self.ssf_levels):
+            kernel = GaussianSmoothing(3, 3, (2**i) * self.ssf_sigma)
+            self.g_kernels.append(kernel)
+
     def _get_bw_set(self):
         bw_set = [1] * self.num_chunks + [0] * (self.gop_size-2)
         bw_set = perms_without_reps(bw_set)
@@ -319,7 +340,7 @@ class deepwive_v1_sink(gr.basic_block):
 
         cuda.memcpy_htod_async(self.codeword_addr, codeword, self.stream)
         cuda.memcpy_htod_async(self.snr_addr, snr, self.stream)
-        self.key_decoder.execute_async_v2(bindings, self.stream.handle, None)
+        self.interp_decoder.execute_async_v2(bindings, self.stream.handle, None)
         cuda.memcpy_dtoh_async(output, self.interp_output_addr, self.stream)
 
         self.stream.synchronize()
@@ -327,20 +348,20 @@ class deepwive_v1_sink(gr.basic_block):
         interp_decoder_out = torch.from_numpy(output)
         f1, f2, a, r = torch.chunk(interp_decoder_out, chunks=4, dim=1)
 
-        a = F.softmax(a, dim=1)
+        a = F.softmax(a.to(torch.float32), dim=1)
         a1, a2, a3 = torch.chunk(a, chunks=3, dim=1)
-        r = torch.sigmoid(r)
+        r = torch.sigmoid(r.to(torch.float32))
 
         a1 = a1.repeat_interleave(3, dim=1)
         a2 = a2.repeat_interleave(3, dim=1)
         a3 = a3.repeat_interleave(3, dim=1)
 
-        pred_vol1 = generate_ss_volume(torch.from_numpy(ref_left), self.ssf_sigma, 3, self.ssf_levels)
-        pred_vol2 = generate_ss_volume(torch.from_numpy(ref_right), self.ssf_sigma, 3, self.ssf_levels)
+        pred_vol1 = generate_ss_volume(torch.from_numpy(ref_left), self.g_kernels)
+        pred_vol2 = generate_ss_volume(torch.from_numpy(ref_right), self.g_kernels)
         pred_1 = ss_warp(pred_vol1, f1.unsqueeze(2))
         pred_2 = ss_warp(pred_vol2, f2.unsqueeze(2))
 
-        pred = (a1 * pred_1 + a2 * pred_2 + a3 * r).numpy()
+        pred = (a1 * pred_1 + a2 * pred_2 + a3 * r).numpy().astype(self.target_dtype)
         self.cfx.pop()
         return pred
 
@@ -363,7 +384,6 @@ class deepwive_v1_sink(gr.basic_block):
             last_frame = self._key_frame_decode(last_frame_codeword, self.snr)
             frames[-1] = last_frame
 
-            ipdb.set_trace()
             for pred_idx in (2, 1, 3):
                 if pred_idx == 2:
                     dist = 2
@@ -390,23 +410,27 @@ class deepwive_v1_sink(gr.basic_block):
         first_flag = int(tags['first'])
         self.first_buffer.append(first_flag)
 
-        alloc_idx = int(tags['alloc_idx'])
-        self.alloc_buffer.append(alloc_idx)
+        # alloc_idx = int(tags['alloc_idx'])
+        # self.alloc_buffer.append(alloc_idx)
+        alloc_idx = 504
+
+        # if alloc_idx != (self.prev_idx + 1):
+        #     ipdb.set_trace()
 
         '''
         TODO need to do majority decoding of first flag and alloc_idx over all packets of gop codeword
         if gop codeword is not complete need to still be able to differentiate gops
         '''
 
-        # print('Rx frame_idx: {}, packet_idx: {}'.format(frame_idx, packet_idx))
+        # print('Rx first: {}, alloc_idx: {}'.format(first_flag, alloc_idx))
+        # self.prev_idx = alloc_idx
 
         received_IQ = [[pair.real, pair.imag] for pair in payload_in]
         received_IQ = np.array(received_IQ)
         self.curr_frame_packets.append(received_IQ)
 
-        is_first = (first_flag == 1)
-        if is_first and len(self.curr_frame_packets) == self.n_packets:
-            # start_time = time.time()
+        if len(self.curr_frame_packets) == self.n_packets:
+            is_first = (all(self.first_buffer) == 1)
 
             codeword = np.concatenate(self.curr_frame_packets, axis=0)[:self.ch_uses-self.n_padding]
             codeword = np.ascontiguousarray(codeword, dtype=self.target_dtype).reshape(self.codeword_shape)
@@ -415,14 +439,10 @@ class deepwive_v1_sink(gr.basic_block):
                 decoded_frames = self._decode_gop(codeword, alloc_idx, first=True)
                 self.prev_last = decoded_frames[0]
             else:
-                decoded_frames = self._decode_gop(codeword, alloc_idx, init_frame=self.prev_last)
+                decoded_frames = self._decode_gop(codeword, alloc_idx, init_frame=self.prev_last)[1:]
                 self.prev_last = decoded_frames[-1]
 
             self.frame_buffer.extend(decoded_frames)
-            # decoded_frame = self._key_frame_decode(codeword, self.snr)
-            # mse = np.mean((curr_frame - decoded_frame) ** 2)
-
-            # drawnow(plt.imshow, False, False, True, frame)
 
             for frame in decoded_frames:
                 cv2.imshow(self.window_name, to_np_img(frame))
@@ -430,13 +450,11 @@ class deepwive_v1_sink(gr.basic_block):
                 if cv2.waitKey(1) == 13:
                     cv2.destroyAllWindows()
 
-            # end_time = time.time()
-            # print('decode time: {}'.format(end_time - start_time))
             self._reset()
 
     def _reset(self):
-        # TODO update this to reflect full scheme
         self.curr_frame_packets = []
         self.frame_buffer = []
         self.first_buffer = []
         self.alloc_buffer = []
+        self.prev_idx = -1

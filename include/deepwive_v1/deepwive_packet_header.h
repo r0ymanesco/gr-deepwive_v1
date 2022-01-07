@@ -116,6 +116,7 @@ namespace gr {
       int Md_bits_per_byte;
       unsigned Md_header_number;
       unsigned Md_mask;
+      unsigned prev_idx = 0;
       boost::crc_optimal<8, 0x07, 0xFF, 0x00, false, false> Md_crc_impl;
 
       void insert_into_header_buffer(

@@ -68,7 +68,7 @@ class GaussianSmoothing(nn.Module):
         kernel = 1
         meshgrids = torch.meshgrid(
             [torch.arange(size, dtype=torch.float32)
-                for size in kernel_size])
+                for size in kernel_size], indexing='ij')
         for size, std, mgrid in zip(kernel_size, sigma, meshgrids):
             mean = (size - 1) / 2
             kernel *= 1 / (std * math.sqrt(2 * math.pi)) * \
@@ -106,12 +106,23 @@ class GaussianSmoothing(nn.Module):
         return self.conv(input, weight=self.weight, groups=self.groups, padding=self.padding)
 
 
+def to_np_img(img):
+    img = np.squeeze(img, axis=0)
+    img = np.swapaxes(img, 0, 2)
+    img = np.swapaxes(img, 0, 1)
+    img = (img * 255).round()
+    img = img[:, :, [2, 1, 0]]
+    return img.astype(np.uint8)
+
+
 def ss_warp(x, flo):
     """
     warp an scaled space volume (x) back to im1, according to scale space flow
     x: [B, C, D, H, W]
     flo: [B, 3, 1, H, W] ss flow
     """
+    in_dtype = x.dtype
+    x = x.to(torch.float32)
     B, C, D, H, W = x.size()
     # mesh grid
     xx = torch.arange(0, W).view(1, -1).repeat(H, 1)
@@ -130,18 +141,18 @@ def ss_warp(x, flo):
     vgrid[:, 2, :, :, :] = 2.0 * vgrid[:, 2, :, :].clone() - 1.0
 
     vgrid = vgrid.permute(0, 2, 3, 4, 1)
-    output = nn.functional.grid_sample(x, vgrid, align_corners=True)
+    output = F.grid_sample(x, vgrid, align_corners=True).to(in_dtype)
     return output.squeeze(2)
 
 
-def generate_ss_volume(x, sigma, kernel_size, M):
-    B, C, H, W = x.size()
+def generate_ss_volume(x, kernels):
+    in_dtype = x.dtype
+    x = x.to(torch.float32)
     out = [x]
-    for i in range(M):
-        kernel = GaussianSmoothing(C, kernel_size, (2**i) * sigma).to(x.device)
+    for _, kernel in enumerate(kernels):
         out.append(kernel(x))
     out = torch.stack(out, dim=2)
-    return out
+    return out.to(in_dtype)
 
 
 def perms_without_reps(s):
@@ -188,8 +199,10 @@ class deepwive_v1_source(gr.sync_block):
 
         if use_fp16:
             self.target_dtype = np.float16
+            assert all(['fp16' in fn for fn in (key_encoder_fn, interp_encoder_fn, ssf_net_fn, bw_allocator_fn)])
         else:
             self.target_dtype = np.float32
+            assert all(['fp16' not in fn for fn in (key_encoder_fn, interp_encoder_fn, ssf_net_fn, bw_allocator_fn)])
 
         self.use_fp16 = use_fp16
         self.source_fn = source_fn
@@ -221,6 +234,7 @@ class deepwive_v1_source(gr.sync_block):
 
         self._get_bw_set()
         self._allocate_memory()
+        self._get_gaussian_kernels()
 
     def _get_runtime(self, logger):
         self.runtime = trt.Runtime(logger)
@@ -265,11 +279,18 @@ class deepwive_v1_source(gr.sync_block):
         self.ssf_input_shape = (1, 6, frame_shape[2], frame_shape[3])
         self.bw_allocator_input_shape = (1, 21*(self.gop_size-2)+6, frame_shape[2], frame_shape[3])
         self.codeword_shape = (1, self.model_cout, frame_shape[2]//16, frame_shape[3]//16)
+        self.interp_output_shape = (1, 12, frame_shape[2], frame_shape[3])
 
         self.ch_uses = np.prod(self.codeword_shape[1:]) // 2
         self.n_packets = self.ch_uses // self.packet_len
         self.n_padding = (self.packet_len - (self.ch_uses % self.packet_len)) % self.packet_len
         return frames
+
+    def _get_gaussian_kernels(self):
+        self.g_kernels = []
+        for i in range(self.ssf_levels):
+            kernel = GaussianSmoothing(3, 3, (2**i) * self.ssf_sigma)
+            self.g_kernels.append(kernel)
 
     def _get_bw_set(self):
         bw_set = [1] * self.num_chunks + [0] * (self.gop_size-2)
@@ -283,7 +304,6 @@ class deepwive_v1_source(gr.sync_block):
 
         output = np.empty(self.codeword_shape, dtype=self.target_dtype)
 
-        # TODO factor execution code for generalisation
         bindings = [int(self.frame_addr),
                     int(self.snr_addr),
                     int(self.codeword_addr)]
@@ -294,7 +314,6 @@ class deepwive_v1_source(gr.sync_block):
         cuda.memcpy_dtoh_async(output, self.codeword_addr, self.stream)
         self.stream.synchronize()
 
-        # TODO add block control to send fewer blocks
         ch_codeword = self._power_normalize(output)
 
         self.cfx.pop()
@@ -305,23 +324,24 @@ class deepwive_v1_source(gr.sync_block):
         self.cfx.push()
 
         # TODO rewrite functions without torch
-        vol1 = generate_ss_volume(torch.from_numpy(ref_left), self.ssf_sigma, 3, self.ssf_levels)
-        vol2 = generate_ss_volume(torch.from_numpy(ref_right), self.ssf_sigma, 3, self.ssf_levels)
+        vol1 = generate_ss_volume(torch.from_numpy(ref_left), self.g_kernels)
+        vol2 = generate_ss_volume(torch.from_numpy(ref_right), self.g_kernels)
 
         flow1 = torch.from_numpy(self._ssf_estimate(frame, ref_left))
         flow2 = torch.from_numpy(self._ssf_estimate(frame, ref_right))
 
-        w1 = ss_warp(vol1, flow1.unsqueeze(2))
-        w2 = ss_warp(vol2, flow2.unsqueeze(2))
+        w1 = ss_warp(vol1, flow1.unsqueeze(2)).numpy()
+        w2 = ss_warp(vol2, flow2.unsqueeze(2)).numpy()
 
-        r1 = torch.from_numpy(frame) - w1
-        r2 = torch.from_numpy(frame) - w2
+        flow1 = flow1.numpy()
+        flow2 = flow2.numpy()
 
-        interp_input = torch.cat((
-            torch.from_numpy(frame),
-            w1, w2,
-            r1, r2,
-            flow1, flow2), dim=1).numpy().astype(self.target_dtype)
+        r1 = frame - w1
+        r2 = frame - w2
+
+        interp_input = np.concatenate((
+            frame, w1, w2, r1, r2, flow1, flow2
+        ), axis=1).astype(self.target_dtype)
 
         output = np.empty(self.codeword_shape, dtype=self.target_dtype)
 
@@ -374,17 +394,17 @@ class deepwive_v1_source(gr.sync_block):
         cuda.memcpy_dtoh_async(output, self.bw_alloc_addr, self.stream)
         self.stream.synchronize()
 
-        alloc_idx = np.argmax(output, axis=1)
+        alloc_idx = np.argmax(output, axis=1)[0]
 
         self.cfx.pop()
-        return alloc_idx[0]
+        return alloc_idx
 
     def _power_normalize(self, codeword):
         codeword = codeword.reshape(1, -1)
         n_vals = codeword.shape[1]
-        normalized = (codeword / np.linalg.norm(codeword, ord=2, axis=1, keepdims=True)) * np.sqrt(n_vals)
+        normalized = (codeword / np.linalg.norm(codeword, axis=1, keepdims=True)) * np.sqrt(n_vals)
         ch_input = normalized.reshape(self.codeword_shape)
-        return ch_input.astype(self.target_dtype)
+        return ch_input
 
     def _encode_gop(self, gop):
         gop_state = [gop[0]] + [None] * (self.gop_size - 2) + [gop[-1]]
@@ -403,26 +423,124 @@ class deepwive_v1_source(gr.sync_block):
                 gop[pred_idx+dist],
                 self.snr
             )
+
             gop_state[pred_idx] = interp_input
             codewords[pred_idx] = interp_codeword
 
         gop_state = np.concatenate(gop_state, axis=1).astype(self.target_dtype)
         bw_allocation_idx = self._allocate_bw(gop_state, self.snr)
-        bw_allocation = self.bw_set[bw_allocation_idx]
+        bw_allocation = self.bw_set[504]  # FIXME remove before final
 
         ch_codewords = [None] * (self.gop_size - 1)
         for i, codeword in enumerate(codewords):
             alloc = bw_allocation[i] * self.chunk_size
-            ch_codewords[i] = codeword[:, :alloc].reshape(-1, 2)
-            # first codeword is the last frame; need to decode first
+            ch_codewords[i] = codeword[:, :alloc]
+            # first codeword is the last frame; decode first
 
-        zero_pad = np.zeros((self.n_padding, 2))
-        ch_codeword = np.concatenate(ch_codewords + [zero_pad], axis=0).astype(self.target_dtype)
+        ch_codeword = np.concatenate(ch_codewords, axis=1).astype(self.target_dtype)
         return ch_codeword, bw_allocation_idx
 
+    def _key_frame_decode(self, codeword, snr):
+        threading.Thread.__init__(self)
+        self.cfx.push()
+
+        output = np.empty(self.frame_shape, dtype=self.target_dtype)
+
+        bindings = [int(self.codeword_addr),
+                    int(self.snr_addr),
+                    int(self.frame_addr)]
+
+        cuda.memcpy_htod_async(self.codeword_addr, codeword, self.stream)
+        cuda.memcpy_htod_async(self.snr_addr, snr, self.stream)
+        self.key_decoder.execute_async_v2(bindings, self.stream.handle, None)
+        cuda.memcpy_dtoh_async(output, self.frame_addr, self.stream)
+
+        # TODO can probably synchronize many frames at once; depending on optimization
+        self.stream.synchronize()
+
+        self.cfx.pop()
+        return output
+
+    def _interp_decode(self, codeword, ref_left, ref_right, snr):
+        threading.Thread.__init__(self)
+        self.cfx.push()
+
+        output = np.empty(self.interp_output_shape, dtype=self.target_dtype)
+
+        bindings = [int(self.codeword_addr),
+                    int(self.snr_addr),
+                    int(self.interp_output_addr)]
+
+        cuda.memcpy_htod_async(self.codeword_addr, codeword, self.stream)
+        cuda.memcpy_htod_async(self.snr_addr, snr, self.stream)
+        self.interp_decoder.execute_async_v2(bindings, self.stream.handle, None)
+        cuda.memcpy_dtoh_async(output, self.interp_output_addr, self.stream)
+
+        self.stream.synchronize()
+
+        interp_decoder_out = torch.from_numpy(output)
+        f1, f2, a, r = torch.chunk(interp_decoder_out, chunks=4, dim=1)
+
+        a = F.softmax(a, dim=1)
+        a1, a2, a3 = torch.chunk(a, chunks=3, dim=1)
+        r = torch.sigmoid(r)
+
+        a1 = a1.repeat_interleave(3, dim=1)
+        a2 = a2.repeat_interleave(3, dim=1)
+        a3 = a3.repeat_interleave(3, dim=1)
+
+        pred_vol1 = generate_ss_volume(torch.from_numpy(ref_left), self.g_kernels)
+        pred_vol2 = generate_ss_volume(torch.from_numpy(ref_right), self.g_kernels)
+        pred_1 = ss_warp(pred_vol1, f1.unsqueeze(2))
+        pred_2 = ss_warp(pred_vol2, f2.unsqueeze(2))
+
+        pred = (a1 * pred_1 + a2 * pred_2 + a3 * r).numpy()
+        self.cfx.pop()
+        return pred
+
+    def _decode_gop(self, codewords_vec, bw_allocation_idx, init_frame=None, first=False):
+        codewords = codewords_vec.reshape(self.codeword_shape)
+
+        if first:
+            assert init_frame is None
+            frames = [self._key_frame_decode(codewords, self.snr)]
+        else:
+            frames = [init_frame] + [None] * (self.gop_size-1)
+            bw_allocation = self.bw_set[bw_allocation_idx]
+            split_idxs = [sum(bw_allocation[:i])*self.chunk_size
+                          for i in range(1, self.gop_size-1)]
+            codewords = np.split(codewords, split_idxs, axis=1)
+
+            last_frame_codeword = codewords[0]
+            zero_pad = np.zeros((1, self.model_cout-last_frame_codeword.shape[1], self.codeword_shape[2], self.codeword_shape[3]))
+            last_frame_codeword = np.concatenate((last_frame_codeword, zero_pad), axis=1).astype(self.target_dtype)
+            last_frame = self._key_frame_decode(last_frame_codeword, self.snr)
+            frames[-1] = last_frame
+
+            for pred_idx in (2, 1, 3):
+                if pred_idx == 2:
+                    dist = 2
+                else:
+                    dist = 1
+
+                codeword = codewords[pred_idx]
+                zero_pad = np.zeros((1, self.model_cout-codeword.shape[1], self.codeword_shape[2], self.codeword_shape[3]))
+                codeword = np.concatenate((codeword, zero_pad), axis=1).astype(self.target_dtype)
+                decoded_frame = self._interp_decode(codeword, frames[pred_idx-dist], frames[pred_idx+dist], self.snr)
+                frames[pred_idx] = decoded_frame
+
+        return frames
+
     def test_work(self):
-        output_items = [[None]*4096]
-        return self.work(None, output_items)
+        self.key_decoder = self._get_context('test_files/key_decoder.trt')
+        self.interp_decoder = self._get_context('test_files/interp_decoder.trt')
+        self.interp_output_addr = cuda.mem_alloc(np.empty(self.interp_output_shape, dtype=self.target_dtype).nbytes)
+
+        gop = self.video_frames[:5]
+        codeword, _ = self._encode_gop(gop)
+        codeword += np.random.randn(*self.codeword_shape) * np.sqrt(10**(-self.snr/10))
+        dec_frames = self._decode_gop(codeword, 504, gop[0])
+        return dec_frames
 
     def work(self, input_items, output_items):
         payload_out = output_items[0]
@@ -440,42 +558,57 @@ class deepwive_v1_source(gr.sync_block):
                     self.curr_codeword = self._key_frame_encode(self.video_frames[0], self.snr)
                     self.curr_codeword = self.curr_codeword.reshape(-1, 2)
                     self.first = 1
+                    self.curr_bw_allocation = 0
                 else:
                     curr_gop = self.video_frames[self.gop_idx*(self.gop_size-1)
                                                  :(self.gop_idx+1)*(self.gop_size-1)+1]
-                    self.curr_codeword, self.curr_bw_allocation = self._encode_gop(curr_gop)
+                    codeword, self.curr_bw_allocation = self._encode_gop(curr_gop)
+                    self.curr_codeword = np.concatenate((codeword.reshape(-1, 2), np.zeros((self.n_padding, 2))), axis=0)
                     self.first = 0
 
             assert self.curr_codeword.shape[0] == self.ch_uses
 
+            # awgn = np.random.randn(self.ch_uses, 2) * np.sqrt(10**(-30/10))
+            # self.curr_codeword = self.curr_codeword + awgn.astype(self.curr_codeword.dtype)
+
             if self.pair_idx % self.packet_len == 0:
-                self.add_item_tag(0, payload_idx + self.nitems_written(0), pmt.intern('packet_len'), pmt.from_long(self.packet_len + 48))
+                # self.add_item_tag(0, payload_idx + self.nitems_written(0),
+                #                   pmt.intern('packet_len'), pmt.from_long(self.packet_len + 48))
+                self.add_item_tag(0, payload_idx + self.nitems_written(0),
+                                  pmt.intern('packet_len'), pmt.from_long(self.packet_len))
+                self.add_item_tag(0, payload_idx + self.nitems_written(0),
+                                  pmt.intern('first'), pmt.from_long(self.first))
+                # self.add_item_tag(0, payload_idx + self.nitems_written(0),
+                #                   pmt.intern('alloc_idx'), pmt.from_long(self.curr_bw_allocation))
 
-                first_flag_bit = [self.first]
+                # first_flag_bit = [self.first]
 
-                if self.first == 0:
-                    allocation_bits = '{0:011b}'.format(self.curr_bw_allocation)
-                    allocation_bits = [np.float(b) for b in allocation_bits]
-                    allocation_bits = allocation_bits[::-1]
-                else:
-                    allocation_bits = [1.] * 11
+                # allocation_bits = '{0:011b}'.format(self.packet_idx)
+                # allocation_bits = [np.float(b) for b in allocation_bits]
+                # allocation_bits = allocation_bits[::-1]
 
-                header_bits = (first_flag_bit + allocation_bits) * 4
-                assert len(header_bits) == 48  # NOTE this is equal to n_occupied_carriers
-                # TODO use better FEC methods
-                # TODO if last gop dropped then use keyframe from last gop to decode
+                # # if self.first == 0:
+                # #     allocation_bits = '{0:011b}'.format(self.curr_bw_allocation)
+                # #     allocation_bits = [np.float(b) for b in allocation_bits]
+                # #     allocation_bits = allocation_bits[::-1]
+                # # else:
+                # #     allocation_bits = [1.] * 11
 
-                for bit in header_bits:
-                    # TODO add method for different header modulations
-                    payload_out[payload_idx] = (2 * bit - 1) + 0*1j
-                    payload_idx += 1
-                    if payload_idx >= len(payload_out):
-                        break
+                # header_bits = (first_flag_bit + allocation_bits) * 4
+                # assert len(header_bits) == 48  # NOTE this is equal to n_occupied_carriers
+                # # TODO use better FEC methods
+                # # TODO if last gop dropped then use keyframe from last gop to decode
 
-                if payload_idx >= len(payload_out):
-                    break
-
+                # for bit in header_bits:
+                #     # TODO add method for different header modulations
+                #     payload_out[payload_idx] = (2 * bit - 1) + 0*1j
+                #     payload_idx += 1
+                #     if payload_idx >= len(payload_out):
+                #         break
                 self.packet_idx += 1
+
+            if payload_idx >= len(payload_out):
+                break
 
             payload_out[payload_idx] = (self.curr_codeword[self.pair_idx, 0]
                                         + self.curr_codeword[self.pair_idx, 1]*1j)
@@ -489,7 +622,7 @@ class deepwive_v1_source(gr.sync_block):
         return len(output_items[0])
 
     def _reset(self):
-        self.gop_idx = (self.gop_idx + 1) % self.n_gops
+        self.gop_idx = int((self.gop_idx + 1) % self.n_gops)
         self.pair_idx = 0
         self.packet_idx = 0
         self.curr_codeword = None

@@ -20,10 +20,6 @@ parameters:
   label: Source (video) file
   dtype: string
 
-- id: model_cout
-  label: Codeword cout
-  dtype: int
-
 - id: key_encoder_fn
   label: Key encoder engine
   dtype: string
@@ -39,6 +35,10 @@ parameters:
 - id: bw_allocator_fn
   label: BW allocator engine
   dtype: string
+
+- id: model_cout
+  label: Codeword cout
+  dtype: int
 
 - id: snr
   label: SNR of model
