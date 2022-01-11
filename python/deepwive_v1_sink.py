@@ -157,15 +157,6 @@ def generate_ss_volume(x, kernels):
     out = torch.stack(out, dim=2)
     return out.to(in_dtype)
 
-# def generate_ss_volume(x, sigma, kernel_size, M):
-#     B, C, H, W = x.size()
-#     out = [x]
-#     for i in range(M):
-#         kernel = GaussianSmoothing(C, kernel_size, (2**i) * sigma).to(x.device)
-#         out.append(kernel(x))
-#     out = torch.stack(out, dim=2)
-#     return out
-
 
 def perms_without_reps(s):
     partitions = list(Counter(s).items())
@@ -321,8 +312,6 @@ class deepwive_v1_sink(gr.basic_block):
         cuda.memcpy_htod_async(self.snr_addr, snr, self.stream)
         self.key_decoder.execute_async_v2(bindings, self.stream.handle, None)
         cuda.memcpy_dtoh_async(output, self.frame_addr, self.stream)
-
-        # TODO can probably synchronize many frames at once; depending on optimization
         self.stream.synchronize()
 
         self.cfx.pop()
@@ -342,7 +331,6 @@ class deepwive_v1_sink(gr.basic_block):
         cuda.memcpy_htod_async(self.snr_addr, snr, self.stream)
         self.interp_decoder.execute_async_v2(bindings, self.stream.handle, None)
         cuda.memcpy_dtoh_async(output, self.interp_output_addr, self.stream)
-
         self.stream.synchronize()
 
         interp_decoder_out = torch.from_numpy(output)
@@ -403,6 +391,9 @@ class deepwive_v1_sink(gr.basic_block):
         init_frame = np.random.rand(*self.frame_shape).astype(self.target_dtype)
         _ = self._decode_gop(codewords_vec, 504, init_frame, first=False)
 
+    def _majority_decode(self):
+        pass
+
     def msg_handler(self, msg_pmt):
         tags = pmt.to_python(pmt.car(msg_pmt))
         payload_in = pmt.to_python(pmt.cdr(msg_pmt))
@@ -410,47 +401,54 @@ class deepwive_v1_sink(gr.basic_block):
         first_flag = int(tags['first'])
         self.first_buffer.append(first_flag)
 
-        # alloc_idx = int(tags['alloc_idx'])
-        # self.alloc_buffer.append(alloc_idx)
-        alloc_idx = 504
+        alloc_idx = int(tags['alloc_idx'])
+        self.alloc_buffer.append(alloc_idx)
 
-        # if alloc_idx != (self.prev_idx + 1):
-        #     ipdb.set_trace()
+        # alloc_idx = 504
 
-        '''
-        TODO need to do majority decoding of first flag and alloc_idx over all packets of gop codeword
-        if gop codeword is not complete need to still be able to differentiate gops
-        '''
+        if False:
+            if alloc_idx != (self.prev_idx + 1):
+                print('first {} alloc {}'.format(first_flag, alloc_idx))
 
-        # print('Rx first: {}, alloc_idx: {}'.format(first_flag, alloc_idx))
-        # self.prev_idx = alloc_idx
+            self.prev_idx = alloc_idx
+            if alloc_idx == self.n_packets - 1:
+                self._reset()
+        else:
 
-        received_IQ = [[pair.real, pair.imag] for pair in payload_in]
-        received_IQ = np.array(received_IQ)
-        self.curr_frame_packets.append(received_IQ)
+            '''
+            TODO need to do majority decoding of first flag and alloc_idx over all packets of gop codeword
+            if gop codeword is not complete need to still be able to differentiate gops
+            '''
 
-        if len(self.curr_frame_packets) == self.n_packets:
-            is_first = (all(self.first_buffer) == 1)
+            # print('Rx first: {}, alloc_idx: {}'.format(first_flag, alloc_idx))
+            # self.prev_idx = alloc_idx
 
-            codeword = np.concatenate(self.curr_frame_packets, axis=0)[:self.ch_uses-self.n_padding]
-            codeword = np.ascontiguousarray(codeword, dtype=self.target_dtype).reshape(self.codeword_shape)
+            received_IQ = [[pair.real, pair.imag] for pair in payload_in]
+            received_IQ = np.array(received_IQ)
+            self.curr_frame_packets.append(received_IQ)
 
-            if is_first:
-                decoded_frames = self._decode_gop(codeword, alloc_idx, first=True)
-                self.prev_last = decoded_frames[0]
-            else:
-                decoded_frames = self._decode_gop(codeword, alloc_idx, init_frame=self.prev_last)[1:]
-                self.prev_last = decoded_frames[-1]
+            if len(self.curr_frame_packets) == self.n_packets:
+                is_first = (all(self.first_buffer) == 1)
 
-            self.frame_buffer.extend(decoded_frames)
+                codeword = np.concatenate(self.curr_frame_packets, axis=0)[:self.ch_uses-self.n_padding]
+                codeword = np.ascontiguousarray(codeword, dtype=self.target_dtype).reshape(self.codeword_shape)
 
-            for frame in decoded_frames:
-                cv2.imshow(self.window_name, to_np_img(frame))
+                if is_first:
+                    decoded_frames = self._decode_gop(codeword, alloc_idx, first=True)
+                    self.prev_last = decoded_frames[0]
+                else:
+                    decoded_frames = self._decode_gop(codeword, alloc_idx, init_frame=self.prev_last)[1:]
+                    self.prev_last = decoded_frames[-1]
 
-                if cv2.waitKey(1) == 13:
-                    cv2.destroyAllWindows()
+                self.frame_buffer.extend(decoded_frames)
 
-            self._reset()
+                for frame in decoded_frames:
+                    cv2.imshow(self.window_name, to_np_img(frame))
+
+                    if cv2.waitKey(1) == 13:
+                        cv2.destroyAllWindows()
+
+                self._reset()
 
     def _reset(self):
         self.curr_frame_packets = []

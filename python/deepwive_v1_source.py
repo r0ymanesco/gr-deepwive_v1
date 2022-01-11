@@ -22,10 +22,12 @@
 import cv2
 import time
 import math
+import copy
 import numbers
 import numpy as np
 from collections import Counter
 from itertools import combinations
+from scipy.interpolate import interpn
 import ipdb
 
 import torch
@@ -143,6 +145,44 @@ def ss_warp(x, flo):
     vgrid = vgrid.permute(0, 2, 3, 4, 1)
     output = F.grid_sample(x, vgrid, align_corners=True).to(in_dtype)
     return output.squeeze(2)
+
+
+def np_ss_warp(x, flo, ssf_levels):
+    """
+    (numpy impl) warp an scaled space volume (x) back to im1, according to scale space flow
+    x: [B, C, D, H, W]
+    flo: [B, 3, 1, H, W] ss flow
+    """
+    _, C, D, H, W = x.shape
+    x = x.squeeze(0)
+    flo = flo.squeeze(0)
+    # mesh grid
+    xx = np.arange(0, W)
+    yy = np.arange(0, H)
+    zz = np.zeros(1)
+    grid = np.meshgrid(*(zz, yy, xx), indexing='ij')
+    grid = np.stack((grid[2], grid[1], grid[0]), axis=0)
+
+    vgrid = grid + flo  # point
+    vgrid = vgrid.squeeze(1)
+
+    # scale grid to [-1,1]
+    # vgrid_cpy = copy.deepcopy(vgrid)
+    # vgrid[0, :, :] = 2.0 * vgrid_cpy[0, :, :] / max(W-1, 1) - 1.0
+    # vgrid[1, :, :] = 2.0 * vgrid_cpy[1, :, :] / max(H-1, 1) - 1.0
+    # vgrid[2, :, :] = 2.0 * vgrid_cpy[2, :, :] - 1.0
+
+    # points = (np.linspace(-1, 1, W), np.linspace(-1, 1, H), np.linspace(-1, 1, 1))
+    vgrid = np.transpose(vgrid, (1, 2, 0))
+    output = []
+    points = (np.arange(0, ssf_levels+1), yy, xx)
+    for i in range(C):
+        w = interpn(points, x[i], vgrid,
+                    method='linear', bounds_error=False, fill_value=0.)
+        output.append(w)
+
+    output = np.stack(output, axis=0)
+    return np.expand_dims(output, axis=0)
 
 
 def generate_ss_volume(x, kernels):
@@ -332,6 +372,8 @@ class deepwive_v1_source(gr.sync_block):
 
         w1 = ss_warp(vol1, flow1.unsqueeze(2)).numpy()
         w2 = ss_warp(vol2, flow2.unsqueeze(2)).numpy()
+        # w1 = np_ss_warp(vol1.numpy(), flow1.unsqueeze(2).numpy(), self.ssf_levels)
+        # w2 = np_ss_warp(vol2.numpy(), flow2.unsqueeze(2).numpy(), self.ssf_levels)
 
         flow1 = flow1.numpy()
         flow2 = flow2.numpy()
@@ -429,7 +471,7 @@ class deepwive_v1_source(gr.sync_block):
 
         gop_state = np.concatenate(gop_state, axis=1).astype(self.target_dtype)
         bw_allocation_idx = self._allocate_bw(gop_state, self.snr)
-        bw_allocation = self.bw_set[504]  # FIXME remove before final
+        bw_allocation = self.bw_set[bw_allocation_idx]
 
         ch_codewords = [None] * (self.gop_size - 1)
         for i, codeword in enumerate(codewords):
@@ -493,6 +535,8 @@ class deepwive_v1_source(gr.sync_block):
         pred_vol2 = generate_ss_volume(torch.from_numpy(ref_right), self.g_kernels)
         pred_1 = ss_warp(pred_vol1, f1.unsqueeze(2))
         pred_2 = ss_warp(pred_vol2, f2.unsqueeze(2))
+        # pred_1 = np_ss_warp(pred_vol1.numpy(), f1.unsqueeze(2).numpy(), self.ssf_levels)
+        # pred_2 = np_ss_warp(pred_vol2.numpy(), f2.unsqueeze(2).numpy(), self.ssf_levels)
 
         pred = (a1 * pred_1 + a2 * pred_2 + a3 * r).numpy()
         self.cfx.pop()
@@ -550,72 +594,66 @@ class deepwive_v1_source(gr.sync_block):
         # encoded_symbol_idx = 0
 
         while payload_idx < len(payload_out):
-            if self.pair_idx % self.ch_uses == 0:
+
+            if self.pair_idx % (self.ch_uses + (48 * self.n_packets)) == 0:
                 self._reset()
 
-            if self.curr_codeword is None:
+            if self.packets is None:
                 if self.gop_idx == 0:
-                    self.curr_codeword = self._key_frame_encode(self.video_frames[0], self.snr)
-                    self.curr_codeword = self.curr_codeword.reshape(-1, 2)
-                    self.first = 1
-                    self.curr_bw_allocation = 0
+                    codeword = self._key_frame_encode(self.video_frames[0], self.snr)
+                    codeword = codeword.reshape(-1, 2)
+                    codeword = np.concatenate((codeword.reshape(-1, 2), np.zeros((self.n_padding, 2))), axis=0)
+                    first = 1.
                 else:
                     curr_gop = self.video_frames[self.gop_idx*(self.gop_size-1)
                                                  :(self.gop_idx+1)*(self.gop_size-1)+1]
-                    codeword, self.curr_bw_allocation = self._encode_gop(curr_gop)
-                    self.curr_codeword = np.concatenate((codeword.reshape(-1, 2), np.zeros((self.n_padding, 2))), axis=0)
-                    self.first = 0
+                    codeword, curr_bw_allocation = self._encode_gop(curr_gop)
+                    codeword = np.concatenate((codeword.reshape(-1, 2), np.zeros((self.n_padding, 2))), axis=0)
+                    first = 0.
 
-            assert self.curr_codeword.shape[0] == self.ch_uses
+                self.packets = np.vsplit(codeword, self.n_packets)
+
+                if first:
+                    allocation_bits = [1] * 11
+                    allocation_bits = [np.float(b) for b in allocation_bits]
+                else:
+                    allocation_bits = '{0:011b}'.format(curr_bw_allocation)
+                    allocation_bits = [np.float(b) for b in allocation_bits]
+                    allocation_bits = allocation_bits[::-1]
+
+                header_bits = 2 * np.array(([first] + allocation_bits) * 4) - 1
+                self.header_bits = np.stack((header_bits, np.zeros_like(header_bits)), axis=1)
+                assert header_bits.shape[0] == 48  # NOTE this is equal to n_occupied_carriers
 
             # awgn = np.random.randn(self.ch_uses, 2) * np.sqrt(10**(-30/10))
             # self.curr_codeword = self.curr_codeword + awgn.astype(self.curr_codeword.dtype)
 
-            if self.pair_idx % self.packet_len == 0:
+            if self.pair_idx % (self.packet_len + 48) == 0:
+
+                self.curr_packet = np.concatenate((self.header_bits, self.packets[self.packet_idx]), axis=0)
+
                 # self.add_item_tag(0, payload_idx + self.nitems_written(0),
                 #                   pmt.intern('packet_len'), pmt.from_long(self.packet_len + 48))
-                self.add_item_tag(0, payload_idx + self.nitems_written(0),
-                                  pmt.intern('packet_len'), pmt.from_long(self.packet_len))
-                self.add_item_tag(0, payload_idx + self.nitems_written(0),
-                                  pmt.intern('first'), pmt.from_long(self.first))
+
+                # self.add_item_tag(0, payload_idx + self.nitems_written(0),
+                #                   pmt.intern('packet_len'), pmt.from_long(self.packet_len))
+                # self.add_item_tag(0, payload_idx + self.nitems_written(0),
+                #                   pmt.intern('first'), pmt.from_long(self.first))
                 # self.add_item_tag(0, payload_idx + self.nitems_written(0),
                 #                   pmt.intern('alloc_idx'), pmt.from_long(self.curr_bw_allocation))
 
-                # first_flag_bit = [self.first]
-
-                # allocation_bits = '{0:011b}'.format(self.packet_idx)
-                # allocation_bits = [np.float(b) for b in allocation_bits]
-                # allocation_bits = allocation_bits[::-1]
-
-                # # if self.first == 0:
-                # #     allocation_bits = '{0:011b}'.format(self.curr_bw_allocation)
-                # #     allocation_bits = [np.float(b) for b in allocation_bits]
-                # #     allocation_bits = allocation_bits[::-1]
-                # # else:
-                # #     allocation_bits = [1.] * 11
-
-                # header_bits = (first_flag_bit + allocation_bits) * 4
-                # assert len(header_bits) == 48  # NOTE this is equal to n_occupied_carriers
-                # # TODO use better FEC methods
-                # # TODO if last gop dropped then use keyframe from last gop to decode
-
-                # for bit in header_bits:
-                #     # TODO add method for different header modulations
-                #     payload_out[payload_idx] = (2 * bit - 1) + 0*1j
-                #     payload_idx += 1
-                #     if payload_idx >= len(payload_out):
-                #         break
                 self.packet_idx += 1
+                self.symbol_idx = 0
 
-            if payload_idx >= len(payload_out):
-                break
-
-            payload_out[payload_idx] = (self.curr_codeword[self.pair_idx, 0]
-                                        + self.curr_codeword[self.pair_idx, 1]*1j)
+            # if self.first == 1:
+            #     print('tx first {} alloc {}, symbol {}'.format(self.first, self.packet_idx, self.symbol_idx))
+            payload_out[payload_idx] = (self.curr_packet[self.symbol_idx, 0]
+                                        + self.curr_packet[self.symbol_idx, 1]*1j)
             # encoded_symbols[encoded_symbol_idx] = (self.curr_codeword[self.pair_idx, 0]
             #                                        + self.curr_codeword[self.pair_idx, 1]*1j)
 
             self.pair_idx += 1
+            self.symbol_idx += 1
             payload_idx += 1
             # encoded_symbol_idx += 1
 
@@ -625,4 +663,4 @@ class deepwive_v1_source(gr.sync_block):
         self.gop_idx = int((self.gop_idx + 1) % self.n_gops)
         self.pair_idx = 0
         self.packet_idx = 0
-        self.curr_codeword = None
+        self.packets = None

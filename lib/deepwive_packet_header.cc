@@ -124,12 +124,14 @@ deepwive_packet_header::~deepwive_packet_header() {}
     int &currentOffset,
     int size_of_field)
 {
+  // unsigned int result = 0;
   unsigned result = 0;
+  int mask = 1;
 
   for (int i = 0; i < size_of_field && currentOffset < Md_header_len; i += Md_bits_per_byte, currentOffset++)
   {
-    // result |= (((int)in[currentOffset]) & d_mask) << i;
-    result |= (((int)in[currentOffset])) << i;
+    result |= (((int)in[currentOffset]) & mask) << i;
+    // result |= ((unsigned int)in[currentOffset] & d_mask) << i;
   }
 
   return result;
@@ -165,7 +167,7 @@ deepwive_packet_header::~deepwive_packet_header() {}
 
   memset(out, 0x00, Md_header_len);
   int k = 0;
-  for (int i = 0; i < 3; i++) // FIXME this is hard coded to give 48 bits, should find a more flexible solution
+  for (int i = 0; i < 4; i++) // FIXME this is hard coded to give 48 bits, should find a more flexible solution
   {
     insert_into_header_buffer(out, k, first_flag, 1);
     insert_into_header_buffer(out, k, alloc_idx, 11);
@@ -190,13 +192,13 @@ deepwive_packet_header::~deepwive_packet_header() {}
   }
 
   tag_t tagH;
-
   int k = 0; // Position in "in"
+  int reps = 4;
 
-  std::vector<unsigned> header_first_flag(4);
-  std::vector<unsigned> header_alloc_idx(4);
+  std::vector<unsigned> header_first_flag(reps);
+  std::vector<unsigned> header_alloc_idx(reps);
 
-  for (int i = 0; i < 4; i++)
+  for (int i = 0; i < reps; i++)
   {
     header_first_flag[i] = extract_from_header_buffer(in_descrambled, k, 1);
     header_alloc_idx[i] = extract_from_header_buffer(in_descrambled, k, 11);
@@ -238,21 +240,19 @@ deepwive_packet_header::~deepwive_packet_header() {}
   tags.push_back(tagH);
 
   // FIXME some header bits not decoded correctly
-  std::cout << "first " << header_first_flag[0] << std::endl;
-  std::cout << "alloc_idx " << header_alloc_idx[0] << std::endl;
-  //
-  // if (header_alloc_idx[0] != prev_idx){
+  // std::cout << "first " << header_first_flag[0] << std::endl;
+  // std::cout << "alloc_idx " << header_alloc_idx[0] << std::endl;
+
+  // if (header_first_flag[0] == 1 && header_alloc_idx[0] < 68){
+  //   std::cout << "first " << header_first_flag[0] << std::endl;
   //   std::cout << "alloc_idx " << header_alloc_idx[0] << std::endl;
-  //   std::cout << "prev_alloc_idx " << prev_idx << std::endl;
-  //   return false;
-  // }
-  // prev_idx++;
 
-  // if (prev_idx == 374){
-  //   prev_idx = 0;
+  //   for (int i = 0; i < d_header_len; i++)
+  //   {
+  //     std::cout << "in " << (unsigned)in[i] << std::endl;
+  //   }
   // }
-  // std::cout << "d_mask " << d_mask << std::endl;
-
+  //
   // To figure out how many payload OFDM symbols there are in this frame,
   // we need to go through the carrier allocation and count the number of
   // allocated carriers per OFDM symbol.

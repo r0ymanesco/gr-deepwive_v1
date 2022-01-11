@@ -53,35 +53,9 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1280, 60.0]
+    coordinate: [1160, 4.0]
     rotation: 0
     state: enabled
-- name: hdr_format
-  id: variable
-  parameters:
-    comment: ''
-    value: digital.header_format_ofdm(occupied_carriers, 1, length_tag_key,)
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [904, 60.0]
-    rotation: 0
-    state: disabled
-- name: hdr_format_0
-  id: variable
-  parameters:
-    comment: ''
-    value: deepwive_packet_header(occupied_carriers, n_syms=1, len_tag_key=length_tag_key,
-      frame_len_tag_key=frame_length_tag_key, bits_per_header_sym=header_mod.bits_per_symbol(),
-      bits_per_payload_sym=1, scramble_header=False)
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [1088, 60.0]
-    rotation: 0
-    state: disabled
 - name: header_equalizer
   id: variable
   parameters:
@@ -92,23 +66,23 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1192, 132.0]
+    coordinate: [1112, 68.0]
     rotation: 0
-    state: disabled
+    state: enabled
 - name: header_formatter
   id: variable
   parameters:
     comment: ''
-    value: deepwive_packet_header(occupied_carriers, n_syms=1, len_tag_key=packet_length_tag_key,
-      frame_len_tag_key=length_tag_key, bits_per_header_sym=header_mod.bits_per_symbol(),
-      bits_per_payload_sym=payload_mod.bits_per_symbol(), scramble_header=False)
+    value: deepwive_packet_header(occupied_carriers, n_syms=header_syms, len_tag_key=length_tag_key,
+      frame_len_tag_key=frame_length_tag_key, bits_per_header_sym=1, bits_per_payload_sym=payload_mod.bits_per_symbol(),
+      scramble_header=False)
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [976, 140.0]
+    coordinate: [912, 68.0]
     rotation: 0
-    state: disabled
+    state: enabled
 - name: header_mod
   id: variable
   parameters:
@@ -120,7 +94,19 @@ blocks:
     bus_structure: null
     coordinate: [584, 4.0]
     rotation: 0
-    state: disabled
+    state: enabled
+- name: header_syms
+  id: variable
+  parameters:
+    comment: ''
+    value: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [920, 132.0]
+    rotation: 0
+    state: enabled
 - name: length_tag_key
   id: variable
   parameters:
@@ -158,18 +144,6 @@ blocks:
     coordinate: [488, 4.0]
     rotation: 0
     state: enabled
-- name: packet_length_tag_key
-  id: variable
-  parameters:
-    comment: ''
-    value: '"packet_len"'
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [800, 132.0]
-    rotation: 0
-    state: enabled
 - name: payload_equalizer
   id: variable
   parameters:
@@ -180,9 +154,9 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [952, 212.0]
+    coordinate: [1312, 68.0]
     rotation: 0
-    state: disabled
+    state: enabled
 - name: payload_mod
   id: variable
   parameters:
@@ -194,7 +168,7 @@ blocks:
     bus_structure: null
     coordinate: [744, 4.0]
     rotation: 0
-    state: disabled
+    state: enabled
 - name: pilot_carriers
   id: variable
   parameters:
@@ -294,7 +268,7 @@ blocks:
     bus_structure: null
     coordinate: [1448, 596.0]
     rotation: 0
-    state: disabled
+    state: enabled
 - name: analog_frequency_modulator_fc_0
   id: analog_frequency_modulator_fc
   parameters:
@@ -310,7 +284,7 @@ blocks:
     bus_structure: null
     coordinate: [512, 1012.0]
     rotation: 0
-    state: disabled
+    state: enabled
 - name: blocks_delay_0
   id: blocks_delay
   parameters:
@@ -329,7 +303,7 @@ blocks:
     bus_structure: null
     coordinate: [488, 948.0]
     rotation: 0
-    state: disabled
+    state: enabled
 - name: blocks_multiply_const_vxx_0
   id: blocks_multiply_const_vxx
   parameters:
@@ -347,7 +321,7 @@ blocks:
     bus_structure: null
     coordinate: [744, 612.0]
     rotation: 0
-    state: disabled
+    state: enabled
 - name: blocks_multiply_xx_0
   id: blocks_multiply_xx
   parameters:
@@ -365,15 +339,34 @@ blocks:
     bus_structure: null
     coordinate: [728, 952.0]
     rotation: 0
-    state: disabled
+    state: enabled
+- name: blocks_stream_to_tagged_stream_0
+  id: blocks_stream_to_tagged_stream
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    len_tag_key: length_tag_key
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    packet_len: packet_len + 48
+    type: complex
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [288, 324.0]
+    rotation: 0
+    state: true
 - name: blocks_tag_debug_0
   id: blocks_tag_debug
   parameters:
     affinity: ''
     alias: ''
     comment: ''
-    display: 'False'
-    filter: '""'
+    display: 'True'
+    filter: length_tag_key
     name: ''
     num_inputs: '1'
     type: complex
@@ -382,7 +375,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1320, 1588.0]
+    coordinate: [1280, 1684.0]
     rotation: 0
     state: disabled
 - name: blocks_tag_gate_0
@@ -403,7 +396,7 @@ blocks:
     bus_structure: null
     coordinate: [976, 604.0]
     rotation: 0
-    state: disabled
+    state: enabled
 - name: blocks_tagged_stream_to_pdu_0
   id: blocks_tagged_stream_to_pdu
   parameters:
@@ -412,7 +405,7 @@ blocks:
     comment: ''
     maxoutbuf: '0'
     minoutbuf: '0'
-    tag: packet_len
+    tag: length_tag_key
     type: complex
   states:
     bus_sink: false
@@ -420,7 +413,7 @@ blocks:
     bus_structure: null
     coordinate: [392, 1740.0]
     rotation: 0
-    state: disabled
+    state: enabled
 - name: blocks_tagged_stream_to_pdu_0_0
   id: blocks_tagged_stream_to_pdu
   parameters:
@@ -437,7 +430,7 @@ blocks:
     bus_structure: null
     coordinate: [440, 2004.0]
     rotation: 0
-    state: enabled
+    state: disabled
 - name: deepwive_v1_deepwive_v1_sink_0
   id: deepwive_v1_deepwive_v1_sink
   parameters:
@@ -459,7 +452,7 @@ blocks:
     bus_structure: null
     coordinate: [712, 1676.0]
     rotation: 0
-    state: disabled
+    state: enabled
 - name: deepwive_v1_deepwive_v1_sink_0_0
   id: deepwive_v1_deepwive_v1_sink
   parameters:
@@ -481,7 +474,7 @@ blocks:
     bus_structure: null
     coordinate: [760, 1940.0]
     rotation: 0
-    state: enabled
+    state: disabled
 - name: deepwive_v1_deepwive_v1_source_1
   id: deepwive_v1_deepwive_v1_source
   parameters:
@@ -496,7 +489,7 @@ blocks:
     minoutbuf: '0'
     model_cout: '240'
     num_chunks: '20'
-    packet_len: '96'
+    packet_len: packet_len
     snr: '20.'
     source_fn: '''/home/tt2114/workspace/gr-deepwive_v1/examples/test_files/v_YoYo_g25_c05.avi'''
     ssf_net_fn: '''/home/tt2114/workspace/gr-deepwive_v1/examples/test_files/ssf_net.trt'''
@@ -505,9 +498,9 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [88, 252.0]
+    coordinate: [24, 252.0]
     rotation: 0
-    state: disabled
+    state: enabled
 - name: deepwive_v1_deepwive_v1_source_1_0
   id: deepwive_v1_deepwive_v1_source
   parameters:
@@ -533,7 +526,7 @@ blocks:
     bus_structure: null
     coordinate: [112, 1924.0]
     rotation: 0
-    state: enabled
+    state: disabled
 - name: digital_constellation_decoder_cb_0
   id: digital_constellation_decoder_cb
   parameters:
@@ -549,7 +542,7 @@ blocks:
     bus_structure: null
     coordinate: [1272, 1236.0]
     rotation: 180
-    state: disabled
+    state: enabled
 - name: digital_header_payload_demux_0
   id: digital_header_payload_demux
   parameters:
@@ -560,7 +553,7 @@ blocks:
     header_len: '3'
     header_padding: '0'
     items_per_symbol: fft_len
-    length_tag_key: length_tag_key
+    length_tag_key: frame_length_tag_key
     maxoutbuf: '0'
     minoutbuf: '0'
     output_symbols: 'True'
@@ -575,7 +568,7 @@ blocks:
     bus_structure: null
     coordinate: [992, 972.0]
     rotation: 0
-    state: disabled
+    state: enabled
 - name: digital_ofdm_carrier_allocator_cvc_0
   id: digital_ofdm_carrier_allocator_cvc
   parameters:
@@ -595,9 +588,9 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [400, 284.0]
+    coordinate: [568, 284.0]
     rotation: 0
-    state: disabled
+    state: enabled
 - name: digital_ofdm_chanest_vcvc_0
   id: digital_ofdm_chanest_vcvc
   parameters:
@@ -618,7 +611,7 @@ blocks:
     bus_structure: null
     coordinate: [712, 1380.0]
     rotation: 0
-    state: disabled
+    state: enabled
 - name: digital_ofdm_cyclic_prefixer_0
   id: digital_ofdm_cyclic_prefixer
   parameters:
@@ -635,9 +628,9 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [944, 316.0]
+    coordinate: [1056, 316.0]
     rotation: 0
-    state: disabled
+    state: enabled
 - name: digital_ofdm_frame_equalizer_vcvc_0
   id: digital_ofdm_frame_equalizer_vcvc
   parameters:
@@ -658,7 +651,7 @@ blocks:
     bus_structure: null
     coordinate: [1024, 1372.0]
     rotation: 0
-    state: disabled
+    state: enabled
 - name: digital_ofdm_frame_equalizer_vcvc_1
   id: digital_ofdm_frame_equalizer_vcvc
   parameters:
@@ -669,7 +662,7 @@ blocks:
     equalizer: payload_equalizer.base()
     fft_len: fft_len
     fixed_frame_len: '0'
-    len_tag_key: length_tag_key
+    len_tag_key: frame_length_tag_key
     maxoutbuf: '0'
     minoutbuf: '0'
     propagate_channel_state: 'True'
@@ -679,7 +672,7 @@ blocks:
     bus_structure: null
     coordinate: [784, 1524.0]
     rotation: 0
-    state: disabled
+    state: enabled
 - name: digital_ofdm_serializer_vcc_header
   id: digital_ofdm_serializer_vcc
   parameters:
@@ -701,7 +694,7 @@ blocks:
     bus_structure: null
     coordinate: [1280, 1396.0]
     rotation: 0
-    state: disabled
+    state: enabled
 - name: digital_ofdm_serializer_vcc_payload
   id: digital_ofdm_serializer_vcc
   parameters:
@@ -711,11 +704,11 @@ blocks:
     comment: ''
     fft_len: fft_len
     input_is_shifted: 'True'
-    len_tag_key: length_tag_key
+    len_tag_key: frame_length_tag_key
     maxoutbuf: '0'
     minoutbuf: '0'
     occupied_carriers: occupied_carriers
-    packet_len_tag_key: packet_length_tag_key
+    packet_len_tag_key: length_tag_key
     symbols_skipped: '1'
   states:
     bus_sink: false
@@ -723,7 +716,7 @@ blocks:
     bus_structure: null
     coordinate: [1032, 1524.0]
     rotation: 0
-    state: disabled
+    state: enabled
 - name: digital_ofdm_sync_sc_cfb_0
   id: digital_ofdm_sync_sc_cfb
   parameters:
@@ -734,7 +727,7 @@ blocks:
     fft_len: fft_len
     maxoutbuf: '0'
     minoutbuf: '0'
-    threshold: '0.9'
+    threshold: '1.0'
     use_even_carriers: 'False'
   states:
     bus_sink: false
@@ -742,7 +735,7 @@ blocks:
     bus_structure: null
     coordinate: [192, 1052.0]
     rotation: 0
-    state: disabled
+    state: enabled
 - name: digital_packet_headerparser_b_0
   id: digital_packet_headerparser_b
   parameters:
@@ -758,7 +751,7 @@ blocks:
     bus_structure: null
     coordinate: [1008, 1236.0]
     rotation: 180
-    state: disabled
+    state: enabled
 - name: fft_vxx_0
   id: fft_vxx
   parameters:
@@ -777,9 +770,9 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [648, 300.0]
+    coordinate: [816, 300.0]
     rotation: 0
-    state: disabled
+    state: enabled
 - name: fft_vxx_0_0
   id: fft_vxx
   parameters:
@@ -790,7 +783,7 @@ blocks:
     forward: 'True'
     maxoutbuf: '0'
     minoutbuf: '0'
-    nthreads: '1'
+    nthreads: '10'
     shift: 'True'
     type: complex
     window: ()
@@ -800,7 +793,7 @@ blocks:
     bus_structure: null
     coordinate: [464, 1380.0]
     rotation: 0
-    state: disabled
+    state: enabled
 - name: fft_vxx_1
   id: fft_vxx
   parameters:
@@ -811,7 +804,7 @@ blocks:
     forward: 'True'
     maxoutbuf: '0'
     minoutbuf: '0'
-    nthreads: '1'
+    nthreads: '10'
     shift: 'True'
     type: complex
     window: ()
@@ -821,7 +814,7 @@ blocks:
     bus_structure: null
     coordinate: [464, 1524.0]
     rotation: 0
-    state: disabled
+    state: enabled
 - name: import_0
   id: import
   parameters:
@@ -959,9 +952,9 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1304, 1684.0]
+    coordinate: [1304, 1580.0]
     rotation: 0
-    state: disabled
+    state: enabled
 - name: qtgui_freq_sink_x_0
   id: qtgui_freq_sink_x
   parameters:
@@ -1041,7 +1034,7 @@ blocks:
     bus_structure: null
     coordinate: [1240, 592.0]
     rotation: 0
-    state: disabled
+    state: enabled
 - name: qtgui_time_sink_x_0
   id: qtgui_time_sink_x
   parameters:
@@ -1138,7 +1131,7 @@ blocks:
     bus_structure: null
     coordinate: [1232, 476.0]
     rotation: 0
-    state: disabled
+    state: enabled
 - name: virtual_sink_0
   id: virtual_sink
   parameters:
@@ -1149,9 +1142,9 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1216, 332.0]
+    coordinate: [1328, 332.0]
     rotation: 0
-    state: disabled
+    state: enabled
 - name: virtual_sink_0_1
   id: virtual_sink
   parameters:
@@ -1164,7 +1157,7 @@ blocks:
     bus_structure: null
     coordinate: [1376, 996.0]
     rotation: 0
-    state: disabled
+    state: enabled
 - name: virtual_sink_1
   id: virtual_sink
   parameters:
@@ -1177,7 +1170,7 @@ blocks:
     bus_structure: null
     coordinate: [1384, 1052.0]
     rotation: 0
-    state: disabled
+    state: enabled
 - name: virtual_sink_1_0
   id: virtual_sink
   parameters:
@@ -1190,7 +1183,7 @@ blocks:
     bus_structure: null
     coordinate: [1312, 1508.0]
     rotation: 0
-    state: disabled
+    state: enabled
 - name: virtual_source_0_0_0_0
   id: virtual_source
   parameters:
@@ -1203,7 +1196,7 @@ blocks:
     bus_structure: null
     coordinate: [56, 612.0]
     rotation: 0
-    state: disabled
+    state: enabled
 - name: virtual_source_0_0_1
   id: virtual_source
   parameters:
@@ -1216,7 +1209,7 @@ blocks:
     bus_structure: null
     coordinate: [168, 1740.0]
     rotation: 0
-    state: disabled
+    state: enabled
 - name: virtual_source_0_1
   id: virtual_source
   parameters:
@@ -1229,7 +1222,7 @@ blocks:
     bus_structure: null
     coordinate: [168, 1412.0]
     rotation: 0
-    state: disabled
+    state: enabled
 - name: virtual_source_1
   id: virtual_source
   parameters:
@@ -1242,19 +1235,20 @@ blocks:
     bus_structure: null
     coordinate: [176, 1556.0]
     rotation: 0
-    state: disabled
+    state: enabled
 
 connections:
 - [analog_frequency_modulator_fc_0, '0', blocks_multiply_xx_0, '1']
 - [blocks_delay_0, '0', blocks_multiply_xx_0, '0']
 - [blocks_multiply_const_vxx_0, '0', blocks_tag_gate_0, '0']
 - [blocks_multiply_xx_0, '0', digital_header_payload_demux_0, '0']
+- [blocks_stream_to_tagged_stream_0, '0', digital_ofdm_carrier_allocator_cvc_0, '0']
 - [blocks_tag_gate_0, '0', limesdr_sink_0, '0']
 - [blocks_tag_gate_0, '0', qtgui_freq_sink_x_0, '0']
 - [blocks_tag_gate_0, '0', qtgui_time_sink_x_0, '0']
 - [blocks_tagged_stream_to_pdu_0, pdus, deepwive_v1_deepwive_v1_sink_0, pdu_in]
 - [blocks_tagged_stream_to_pdu_0_0, pdus, deepwive_v1_deepwive_v1_sink_0_0, pdu_in]
-- [deepwive_v1_deepwive_v1_source_1, '0', digital_ofdm_carrier_allocator_cvc_0, '0']
+- [deepwive_v1_deepwive_v1_source_1, '0', blocks_stream_to_tagged_stream_0, '0']
 - [deepwive_v1_deepwive_v1_source_1_0, '0', blocks_tagged_stream_to_pdu_0_0, '0']
 - [digital_constellation_decoder_cb_0, '0', digital_packet_headerparser_b_0, '0']
 - [digital_header_payload_demux_0, '0', virtual_sink_0_1, '0']
