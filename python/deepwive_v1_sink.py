@@ -236,9 +236,9 @@ class deepwive_v1_sink(gr.basic_block):
         self._get_gaussian_kernels()
         self._allocate_memory()
         self._get_bw_set()
-        self._reset()
 
-        self.prev_packet_idx = -1
+        self._gop_reset()
+        self._video_reset()
 
     def _get_runtime(self, logger):
         self.runtime = trt.Runtime(logger)
@@ -383,6 +383,7 @@ class deepwive_v1_sink(gr.basic_block):
                 codeword = np.concatenate((codeword, zero_pad), axis=1).astype(self.target_dtype)
                 decoded_frame = self._interp_decode(codeword, frames[pred_idx-dist], frames[pred_idx+dist], self.snr)
                 frames[pred_idx] = decoded_frame
+            frames = frames[1:]
 
         return frames
 
@@ -392,19 +393,39 @@ class deepwive_v1_sink(gr.basic_block):
         _ = self._decode_gop(codewords_vec, 504, init_frame, first=False)
 
     def _majority_decode(self):
-        pass
+        allocation_bits = np.array(self.alloc_buffer)
+        alloc_mean = np.mean(allocation_bits, axis=0)
+        alloc_bits = np.round(alloc_mean)
+        alloc_mask = 2 ** np.arange(10, -1, -1)
+        alloc_idx = np.sum(alloc_mask * alloc_bits).astype(np.int)
+        return int(alloc_idx % len(self.bw_set))
+
+    def _first_frame_detection(self, flag):
+        self.patience = 0
+        if not self.first_received:
+            self.first_count += 1
+            if not flag and (self.errs < self.patience):
+                self.errs += 1
+            elif not flag:
+                self._gop_reset()
+
+        return (self.first_count == self.n_packets)
 
     def msg_handler(self, msg_pmt):
         tags = pmt.to_python(pmt.car(msg_pmt))
         payload_in = pmt.to_python(pmt.cdr(msg_pmt))
 
-        first_flag = int(tags['first'])
-        self.first_buffer.append(first_flag)
-
         alloc_idx = int(tags['alloc_idx'])
-        self.alloc_buffer.append(alloc_idx)
+        allocation_bits = '{0:011b}'.format(alloc_idx)
+        allocation_bits = [np.float(b) for b in allocation_bits]
+        self.alloc_buffer.append(allocation_bits)
 
-        # alloc_idx = 504
+        received_IQ = [[pair.real, pair.imag] for pair in payload_in]
+        received_IQ = np.array(received_IQ)
+        self.curr_frame_packets.append(received_IQ)
+
+        first_flag = bool(tags['first'])
+        detect_first = self._first_frame_detection(first_flag)
 
         if False:
             if alloc_idx != (self.prev_idx + 1):
@@ -412,47 +433,44 @@ class deepwive_v1_sink(gr.basic_block):
 
             self.prev_idx = alloc_idx
             if alloc_idx == self.n_packets - 1:
-                self._reset()
-        else:
+                self._gop_reset()
 
-            '''
-            TODO need to do majority decoding of first flag and alloc_idx over all packets of gop codeword
-            if gop codeword is not complete need to still be able to differentiate gops
-            '''
+        elif detect_first or (self.first_received and len(self.curr_frame_packets) == self.n_packets):
+            codeword = np.concatenate(self.curr_frame_packets, axis=0)[:self.ch_uses-self.n_padding]
+            codeword = np.ascontiguousarray(codeword, dtype=self.target_dtype).reshape(self.codeword_shape)
 
-            # print('Rx first: {}, alloc_idx: {}'.format(first_flag, alloc_idx))
-            # self.prev_idx = alloc_idx
+            if detect_first:
+                self._video_reset()
 
-            received_IQ = [[pair.real, pair.imag] for pair in payload_in]
-            received_IQ = np.array(received_IQ)
-            self.curr_frame_packets.append(received_IQ)
+                decoded_frames = self._decode_gop(codeword, alloc_idx, first=detect_first)
+                self.first_received = True
 
-            if len(self.curr_frame_packets) == self.n_packets:
-                is_first = (all(self.first_buffer) == 1)
+            elif self.first_received:
+                if self.prev_last is None:
+                    raise Exception
 
-                codeword = np.concatenate(self.curr_frame_packets, axis=0)[:self.ch_uses-self.n_padding]
-                codeword = np.ascontiguousarray(codeword, dtype=self.target_dtype).reshape(self.codeword_shape)
+                alloc_idx = self._majority_decode()
+                decoded_frames = self._decode_gop(codeword, alloc_idx, init_frame=self.prev_last)
 
-                if is_first:
-                    decoded_frames = self._decode_gop(codeword, alloc_idx, first=True)
-                    self.prev_last = decoded_frames[0]
-                else:
-                    decoded_frames = self._decode_gop(codeword, alloc_idx, init_frame=self.prev_last)[1:]
-                    self.prev_last = decoded_frames[-1]
+            self.prev_last = decoded_frames[-1]
+            self.frame_buffer.extend(decoded_frames)
 
-                self.frame_buffer.extend(decoded_frames)
+            for frame in decoded_frames:
+                cv2.imshow(self.window_name, to_np_img(frame))
 
-                for frame in decoded_frames:
-                    cv2.imshow(self.window_name, to_np_img(frame))
+                if cv2.waitKey(1) == 13:
+                    cv2.destroyAllWindows()
 
-                    if cv2.waitKey(1) == 13:
-                        cv2.destroyAllWindows()
+            self._gop_reset()
 
-                self._reset()
-
-    def _reset(self):
+    def _gop_reset(self):
+        self.first_count = 0
+        self.errs = 0
         self.curr_frame_packets = []
         self.frame_buffer = []
-        self.first_buffer = []
         self.alloc_buffer = []
-        self.prev_idx = -1
+
+    def _video_reset(self):
+        self._gop_reset()
+        self.prev_last = None
+        self.first_received = False

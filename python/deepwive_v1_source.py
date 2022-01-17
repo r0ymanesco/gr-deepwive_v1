@@ -625,28 +625,15 @@ class deepwive_v1_source(gr.sync_block):
                 self.header_bits = np.stack((header_bits, np.zeros_like(header_bits)), axis=1)
                 assert header_bits.shape[0] == 48  # NOTE this is equal to n_occupied_carriers
 
-            # awgn = np.random.randn(self.ch_uses, 2) * np.sqrt(10**(-30/10))
-            # self.curr_codeword = self.curr_codeword + awgn.astype(self.curr_codeword.dtype)
-
             if self.pair_idx % (self.packet_len + 48) == 0:
-
-                self.curr_packet = np.concatenate((self.header_bits, self.packets[self.packet_idx]), axis=0)
-
                 # self.add_item_tag(0, payload_idx + self.nitems_written(0),
                 #                   pmt.intern('packet_len'), pmt.from_long(self.packet_len + 48))
 
-                # self.add_item_tag(0, payload_idx + self.nitems_written(0),
-                #                   pmt.intern('packet_len'), pmt.from_long(self.packet_len))
-                # self.add_item_tag(0, payload_idx + self.nitems_written(0),
-                #                   pmt.intern('first'), pmt.from_long(self.first))
-                # self.add_item_tag(0, payload_idx + self.nitems_written(0),
-                #                   pmt.intern('alloc_idx'), pmt.from_long(self.curr_bw_allocation))
+                self.curr_packet = np.concatenate((self.header_bits, self.packets[self.packet_idx]), axis=0)
 
                 self.packet_idx += 1
                 self.symbol_idx = 0
 
-            # if self.first == 1:
-            #     print('tx first {} alloc {}, symbol {}'.format(self.first, self.packet_idx, self.symbol_idx))
             payload_out[payload_idx] = (self.curr_packet[self.symbol_idx, 0]
                                         + self.curr_packet[self.symbol_idx, 1]*1j)
             # encoded_symbols[encoded_symbol_idx] = (self.curr_codeword[self.pair_idx, 0]
