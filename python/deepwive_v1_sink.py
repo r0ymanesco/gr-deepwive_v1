@@ -192,7 +192,7 @@ class deepwive_v1_sink(gr.basic_block):
 
     def __init__(self, source_fn, model_cout,
                  key_decoder_fn, interp_decoder_fn,
-                 packet_len=96, snr=20, num_chunks=20, gop_size=5, use_fp16=False):
+                 packet_len=96, snr=20, num_chunks=20, gop_size=5, patience=0, use_fp16=False):
         gr.sync_block.__init__(self,
                                name="deepwive_v1_sink",
                                in_sig=None,
@@ -233,6 +233,7 @@ class deepwive_v1_sink(gr.basic_block):
         self.window_name = 'video_stream'
         self._open_window(self.frame_shape[3], self.frame_shape[2], self.window_name)
 
+        self.patience = patience
         self._get_gaussian_kernels()
         self._allocate_memory()
         self._get_bw_set()
@@ -401,7 +402,6 @@ class deepwive_v1_sink(gr.basic_block):
         return int(alloc_idx % len(self.bw_set))
 
     def _first_frame_detection(self, flag):
-        self.patience = 0
         if not self.first_received:
             self.first_count += 1
             if not flag and (self.errs < self.patience):

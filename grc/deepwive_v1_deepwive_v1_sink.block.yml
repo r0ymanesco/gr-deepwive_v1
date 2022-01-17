@@ -7,7 +7,8 @@ templates:
   make: |-
     deepwive_v1.deepwive_v1_sink(${source_fn}, ${model_cout},
     ${key_decoder_fn}, ${interp_decoder_fn},
-    ${packet_len}, ${snr}, ${num_chunks}, ${gop_size}, ${use_fp16})
+    ${packet_len}, ${snr}, ${num_chunks}, ${gop_size}, ${patience},
+    ${use_fp16})
 
 #  Make one 'parameters' list entry for every parameter you want settable from the GUI.
 #     Keys include:
@@ -45,6 +46,10 @@ parameters:
 
 - id: gop_size
   label: GoP size
+  dtype: int
+
+- id: patience
+  label: Init Patience
   dtype: int
 
 - id: use_fp16

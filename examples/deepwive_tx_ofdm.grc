@@ -411,7 +411,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [392, 1740.0]
+    coordinate: [392, 1748.0]
     rotation: 0
     state: enabled
 - name: blocks_tagged_stream_to_pdu_0_0
@@ -443,6 +443,7 @@ blocks:
     model_cout: '240'
     num_chunks: '20'
     packet_len: packet_len
+    patience: '5'
     snr: '20'
     source_fn: '''/home/tt2114/workspace/gr-deepwive_v1/examples/test_files/v_YoYo_g25_c05.avi'''
     use_fp16: 'False'
@@ -465,6 +466,7 @@ blocks:
     model_cout: '240'
     num_chunks: '20'
     packet_len: packet_len
+    patience: ''
     snr: '20'
     source_fn: '''/home/tt2114/workspace/gr-deepwive_v1/examples/test_files/v_YoYo_g25_c05.avi'''
     use_fp16: 'True'
@@ -1207,7 +1209,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [168, 1740.0]
+    coordinate: [168, 1748.0]
     rotation: 0
     state: enabled
 - name: virtual_source_0_1
