@@ -88,10 +88,10 @@ void soft_equalizer_single_tap::equalize(gr_complex* frame,
                 continue;
             }
             if (!d_pilot_carriers.empty() && d_pilot_carriers[d_pilot_carr_set][k]) {
-                // d_channel_state[k] = frame[i * d_fft_len + k] / d_pilot_symbols[d_pilot_carr_set][k];
-                d_channel_state[k] = d_alpha * d_channel_state[k] +
-                                     (1 - d_alpha) * frame[i * d_fft_len + k] /
-                                         d_pilot_symbols[d_pilot_carr_set][k];
+                d_channel_state[k] = frame[i * d_fft_len + k] / d_pilot_symbols[d_pilot_carr_set][k];
+                // d_channel_state[k] = d_alpha * d_channel_state[k] +
+                //                      (1 - d_alpha) * frame[i * d_fft_len + k] /
+                //                          d_pilot_symbols[d_pilot_carr_set][k];
                 frame[i * d_fft_len + k] = d_pilot_symbols[d_pilot_carr_set][k];
             } else {
                 frame[i * d_fft_len + k] = frame[i * d_fft_len + k] / d_channel_state[k];

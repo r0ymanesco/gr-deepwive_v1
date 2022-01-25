@@ -17,12 +17,13 @@
 # along with GNU Radio; see the file COPYING.  If not, write to
 # the Free Software Foundation, Inc., 51 Franklin Street,
 # Boston, MA 02110-1301, USA.
-
 install(FILES
     deepwive_v1_deepwive_v1_source.block.yml
     deepwive_v1_deepwive_v1_sink.block.yml
     deepwive_v1_soft_equalizer_single_tap.block.yml
     deepwive_v1_deepwive_packet_header.block.yml
     deepwive_v1_header_format.block.yml
-    deepwive_v1_awgn_channel.block.yml DESTINATION share/gnuradio/grc/blocks
+    deepwive_v1_awgn_channel.block.yml
+    deepwive_v1_ofdm_sync_short.block.yml
+    deepwive_v1_ofdm_sync_long.block.yml DESTINATION share/gnuradio/grc/blocks
 )

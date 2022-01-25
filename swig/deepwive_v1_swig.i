@@ -12,6 +12,8 @@
 #include "deepwive_v1/soft_equalizer_single_tap.h"
 #include "deepwive_v1/deepwive_packet_header.h"
 #include "deepwive_v1/header_format.h"
+#include "deepwive_v1/ofdm_sync_short.h"
+#include "deepwive_v1/ofdm_sync_long.h"
 %}
 
 %include "gnuradio/digital/ofdm_equalizer_base.h"
@@ -22,6 +24,7 @@ ofdm_equalizer_1d_pilots_sptr.__repr__ = lambda self: "<OFDM equalizer 1D base c
 %}
 
 using namespace gr::digital;
+%include "gnuradio/digital/constellation.h"
 %include "deepwive_v1/soft_equalizer_single_tap.h"
 %template(soft_equalizer_single_tap_sptr) boost::shared_ptr<gr::deepwive_v1::soft_equalizer_single_tap>;
 %pythoncode %{
@@ -52,3 +55,9 @@ deepwive_packet_header = deepwive_packet_header .make;
 header_format_sptr.__repr__ = lambda self: "<header_format>"
 header_format = header_format .make;
 %}
+
+%include "deepwive_v1/ofdm_sync_short.h"
+%include "deepwive_v1/ofdm_sync_long.h"
+
+GR_SWIG_BLOCK_MAGIC2(deepwive_v1, ofdm_sync_short);
+GR_SWIG_BLOCK_MAGIC2(deepwive_v1, ofdm_sync_long);

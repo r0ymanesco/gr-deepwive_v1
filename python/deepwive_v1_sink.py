@@ -24,10 +24,8 @@ import math
 import time
 import numbers
 import numpy as np
-import matplotlib.pyplot as plt
 import ipdb
 
-from drawnow import drawnow
 from collections import Counter
 from itertools import combinations
 
@@ -80,7 +78,7 @@ class GaussianSmoothing(nn.Module):
         kernel = 1
         meshgrids = torch.meshgrid(
             [torch.arange(size, dtype=torch.float32)
-                for size in kernel_size], indexing='ij')
+                for size in kernel_size])
         for size, std, mgrid in zip(kernel_size, sigma, meshgrids):
             mean = (size - 1) / 2
             kernel *= 1 / (std * math.sqrt(2 * math.pi)) * \
@@ -404,6 +402,10 @@ class deepwive_v1_sink(gr.basic_block):
     def _first_frame_detection(self, flag):
         if not self.first_received:
             self.first_count += 1
+
+            if flag:
+                self.errs = 0
+
             if not flag and (self.errs < self.patience):
                 self.errs += 1
             elif not flag:
@@ -425,15 +427,17 @@ class deepwive_v1_sink(gr.basic_block):
         self.curr_frame_packets.append(received_IQ)
 
         first_flag = bool(tags['first'])
+        # print(first_flag)
         detect_first = self._first_frame_detection(first_flag)
 
         if False:
-            if alloc_idx != (self.prev_idx + 1):
-                print('first {} alloc {}'.format(first_flag, alloc_idx))
+            print('first {} alloc {}'.format(first_flag, alloc_idx))
+            # if alloc_idx != (self.prev_idx + 1):
+            #     print('first {} alloc {}'.format(first_flag, alloc_idx))
 
-            self.prev_idx = alloc_idx
-            if alloc_idx == self.n_packets - 1:
-                self._gop_reset()
+            # self.prev_idx = alloc_idx
+            # if alloc_idx == self.n_packets - 1:
+            #     self._gop_reset()
 
         elif detect_first or (self.first_received and len(self.curr_frame_packets) == self.n_packets):
             codeword = np.concatenate(self.curr_frame_packets, axis=0)[:self.ch_uses-self.n_padding]
@@ -450,6 +454,7 @@ class deepwive_v1_sink(gr.basic_block):
                     raise Exception
 
                 alloc_idx = self._majority_decode()
+                print('first {} alloc {}'.format(first_flag, alloc_idx))
                 decoded_frames = self._decode_gop(codeword, alloc_idx, init_frame=self.prev_last)
 
             self.prev_last = decoded_frames[-1]

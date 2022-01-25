@@ -205,20 +205,20 @@ deepwive_packet_header::~deepwive_packet_header() {}
     // unsigned header_crc = extract_from_header_buffer(in_descrambled,k,8);
   }
 
-  header_first_flag[0] = ((header_first_flag[0] & header_first_flag[1])
-                          | (header_first_flag[0] & header_first_flag[2])
-                          | (header_first_flag[0] & header_first_flag[3])
-                          | (header_first_flag[1] & header_first_flag[2])
-                          | (header_first_flag[1] & header_first_flag[3])
-                          | (header_first_flag[2] & header_first_flag[3])
-  );
-  header_alloc_idx[0] = ((header_alloc_idx[0] & header_alloc_idx[1])
-                          | (header_alloc_idx[0] & header_alloc_idx[2])
-                          | (header_alloc_idx[0] & header_alloc_idx[3])
-                          | (header_alloc_idx[1] & header_alloc_idx[2])
-                          | (header_alloc_idx[1] & header_alloc_idx[3])
-                          | (header_alloc_idx[2] & header_alloc_idx[3])
-  );
+  // header_first_flag[0] = ((header_first_flag[0] & header_first_flag[1])
+  //                         | (header_first_flag[0] & header_first_flag[2])
+  //                         | (header_first_flag[0] & header_first_flag[3])
+  //                         | (header_first_flag[1] & header_first_flag[2])
+  //                         | (header_first_flag[1] & header_first_flag[3])
+  //                         | (header_first_flag[2] & header_first_flag[3])
+  // );
+  // header_alloc_idx[0] = ((header_alloc_idx[0] & header_alloc_idx[1])
+  //                         | (header_alloc_idx[0] & header_alloc_idx[2])
+  //                         | (header_alloc_idx[0] & header_alloc_idx[3])
+  //                         | (header_alloc_idx[1] & header_alloc_idx[2])
+  //                         | (header_alloc_idx[1] & header_alloc_idx[3])
+  //                         | (header_alloc_idx[2] & header_alloc_idx[3])
+  // );
 
   if (k > Md_header_len)
   {
@@ -240,8 +240,8 @@ deepwive_packet_header::~deepwive_packet_header() {}
   tags.push_back(tagH);
 
   // FIXME some header bits not decoded correctly
-  // std::cout << "first " << header_first_flag[0] << std::endl;
-  // std::cout << "alloc_idx " << header_alloc_idx[0] << std::endl;
+  std::cout << "first " << header_first_flag[0] << std::endl;
+  std::cout << "alloc_idx " << header_alloc_idx[0] << std::endl;
 
   // if (header_first_flag[0] == 1 && header_alloc_idx[0] < 68){
   //   std::cout << "first " << header_first_flag[0] << std::endl;

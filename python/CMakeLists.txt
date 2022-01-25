@@ -34,7 +34,8 @@ GR_PYTHON_INSTALL(
     __init__.py
     deepwive_v1_source.py
     deepwive_v1_sink.py
-    awgn_channel.py DESTINATION ${GR_PYTHON_DIR}/deepwive_v1
+    awgn_channel.py
+    DESTINATION ${GR_PYTHON_DIR}/deepwive_v1
 )
 
 ########################################################################

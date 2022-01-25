@@ -22,12 +22,10 @@
 import cv2
 import time
 import math
-import copy
 import numbers
 import numpy as np
 from collections import Counter
 from itertools import combinations
-from scipy.interpolate import interpn
 import ipdb
 
 import torch
@@ -70,7 +68,7 @@ class GaussianSmoothing(nn.Module):
         kernel = 1
         meshgrids = torch.meshgrid(
             [torch.arange(size, dtype=torch.float32)
-                for size in kernel_size], indexing='ij')
+                for size in kernel_size])
         for size, std, mgrid in zip(kernel_size, sigma, meshgrids):
             mean = (size - 1) / 2
             kernel *= 1 / (std * math.sqrt(2 * math.pi)) * \
@@ -147,42 +145,42 @@ def ss_warp(x, flo):
     return output.squeeze(2)
 
 
-def np_ss_warp(x, flo, ssf_levels):
-    """
-    (numpy impl) warp an scaled space volume (x) back to im1, according to scale space flow
-    x: [B, C, D, H, W]
-    flo: [B, 3, 1, H, W] ss flow
-    """
-    _, C, D, H, W = x.shape
-    x = x.squeeze(0)
-    flo = flo.squeeze(0)
-    # mesh grid
-    xx = np.arange(0, W)
-    yy = np.arange(0, H)
-    zz = np.zeros(1)
-    grid = np.meshgrid(*(zz, yy, xx), indexing='ij')
-    grid = np.stack((grid[2], grid[1], grid[0]), axis=0)
+# def np_ss_warp(x, flo, ssf_levels):
+#     """
+#     (numpy impl) warp an scaled space volume (x) back to im1, according to scale space flow
+#     x: [B, C, D, H, W]
+#     flo: [B, 3, 1, H, W] ss flow
+#     """
+#     _, C, D, H, W = x.shape
+#     x = x.squeeze(0)
+#     flo = flo.squeeze(0)
+#     # mesh grid
+#     xx = np.arange(0, W)
+#     yy = np.arange(0, H)
+#     zz = np.zeros(1)
+#     grid = np.meshgrid(*(zz, yy, xx), indexing='ij')
+#     grid = np.stack((grid[2], grid[1], grid[0]), axis=0)
 
-    vgrid = grid + flo  # point
-    vgrid = vgrid.squeeze(1)
+#     vgrid = grid + flo  # point
+#     vgrid = vgrid.squeeze(1)
 
-    # scale grid to [-1,1]
-    # vgrid_cpy = copy.deepcopy(vgrid)
-    # vgrid[0, :, :] = 2.0 * vgrid_cpy[0, :, :] / max(W-1, 1) - 1.0
-    # vgrid[1, :, :] = 2.0 * vgrid_cpy[1, :, :] / max(H-1, 1) - 1.0
-    # vgrid[2, :, :] = 2.0 * vgrid_cpy[2, :, :] - 1.0
+#     # scale grid to [-1,1]
+#     # vgrid_cpy = copy.deepcopy(vgrid)
+#     # vgrid[0, :, :] = 2.0 * vgrid_cpy[0, :, :] / max(W-1, 1) - 1.0
+#     # vgrid[1, :, :] = 2.0 * vgrid_cpy[1, :, :] / max(H-1, 1) - 1.0
+#     # vgrid[2, :, :] = 2.0 * vgrid_cpy[2, :, :] - 1.0
 
-    # points = (np.linspace(-1, 1, W), np.linspace(-1, 1, H), np.linspace(-1, 1, 1))
-    vgrid = np.transpose(vgrid, (1, 2, 0))
-    output = []
-    points = (np.arange(0, ssf_levels+1), yy, xx)
-    for i in range(C):
-        w = interpn(points, x[i], vgrid,
-                    method='linear', bounds_error=False, fill_value=0.)
-        output.append(w)
+#     # points = (np.linspace(-1, 1, W), np.linspace(-1, 1, H), np.linspace(-1, 1, 1))
+#     vgrid = np.transpose(vgrid, (1, 2, 0))
+#     output = []
+#     points = (np.arange(0, ssf_levels+1), yy, xx)
+#     for i in range(C):
+#         w = interpn(points, x[i], vgrid,
+#                     method='linear', bounds_error=False, fill_value=0.)
+#         output.append(w)
 
-    output = np.stack(output, axis=0)
-    return np.expand_dims(output, axis=0)
+#     output = np.stack(output, axis=0)
+#     return np.expand_dims(output, axis=0)
 
 
 def generate_ss_volume(x, kernels):
@@ -604,6 +602,7 @@ class deepwive_v1_source(gr.sync_block):
                     codeword = codeword.reshape(-1, 2)
                     codeword = np.concatenate((codeword.reshape(-1, 2), np.zeros((self.n_padding, 2))), axis=0)
                     first = 1.
+                    curr_bw_allocation = 0
                 else:
                     curr_gop = self.video_frames[self.gop_idx*(self.gop_size-1)
                                                  :(self.gop_idx+1)*(self.gop_size-1)+1]
@@ -612,6 +611,7 @@ class deepwive_v1_source(gr.sync_block):
                     first = 0.
 
                 self.packets = np.vsplit(codeword, self.n_packets)
+                # print('tx first {}, alloc {}'.format(first, curr_bw_allocation))
 
                 if first:
                     allocation_bits = [1] * 11
