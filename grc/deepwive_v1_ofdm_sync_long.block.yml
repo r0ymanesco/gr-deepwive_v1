@@ -49,6 +49,9 @@ outputs:
 -   domain: stream
     dtype: complex
     multiplicity: '1'
+-   domain: stream
+    dtype: float
+    multiplicity: '1'
 asserts:
 - ${ sync_length > 0 }
 
