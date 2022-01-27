@@ -424,6 +424,7 @@ class deepwive_v1_sink(gr.basic_block):
 
         received_IQ = [[pair.real, pair.imag] for pair in payload_in]
         received_IQ = np.array(received_IQ)
+        assert received_IQ.shape[0] == self.packet_len
         self.curr_frame_packets.append(received_IQ)
 
         first_flag = bool(tags['first'])

@@ -50,7 +50,7 @@ class ofdm_sync_long_impl : public ofdm_sync_long
                         bool debug)
       : block("ofdm_sync_long",
               gr::io_signature::make2(2, 2, sizeof(gr_complex), sizeof(gr_complex)),
-              gr::io_signature::make2(2, 2, sizeof(gr_complex), sizeof(float))),
+              gr::io_signature::make(1, 1, sizeof(gr_complex))),
         d_fir(gr::filter::kernel::fir_filter_ccc(1, LONG)),
         d_log(log),
         d_debug(debug),
@@ -75,7 +75,7 @@ class ofdm_sync_long_impl : public ofdm_sync_long
       const gr_complex* in = (const gr_complex*)input_items[0];
       const gr_complex* in_delayed = (const gr_complex*)input_items[1];
       gr_complex* out = (gr_complex*)output_items[0];
-      float* corr = (float*)output_items[1];
+      // float* corr = (float*)output_items[1];
 
       dout << "LONG ninput[0] " << ninput_items[0] << " ninput[1]" << ninput_items[1]
         << " noutput " << noutput << " state " << d_state << std::endl;
@@ -122,10 +122,10 @@ class ofdm_sync_long_impl : public ofdm_sync_long
               d_count = 0;
               d_state = COPY;
               int k;
-              for (k = 0; k < 64; k++){
-                corr[o] = (float)abs(d_correlation[k]);
-                o++;
-              }
+              // for (k = 0; k < 64; k++){
+              //   corr[o] = (float)abs(d_correlation[k]);
+              //   o++;
+              // }
               break;
             }
           }
@@ -224,6 +224,7 @@ class ofdm_sync_long_impl : public ofdm_sync_long
             d_frame_start = min(get<1>(vec[i]), get<1>(vec[k]));
             d_freq_offset = arg(first * conj(second)) / 64;
             // nice match found, return immediately
+            dout << "found nice match" << std::endl;
             return;
           }else if (diff == 63){
             d_frame_start = min(get<1>(vec[i]), get<1>(vec[k]));

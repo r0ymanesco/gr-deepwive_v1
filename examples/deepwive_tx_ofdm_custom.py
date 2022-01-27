@@ -98,7 +98,7 @@ class deepwive_tx_ofdm_custom(gr.top_block, Qt.QWidget):
         self.rolloff = rolloff = 0
         self.pilot_symbols_old = pilot_symbols_old = ((1, 1, 1, -1,),)
         self.payload_equalizer = payload_equalizer = digital.ofdm_equalizer_static(fft_len, occupied_carriers, pilot_carriers, pilot_symbols, 1)
-        self.packet_len = packet_len = 1440
+        self.packet_len = packet_len = 720
         self.header_formatter = header_formatter = deepwive_packet_header(occupied_carriers, n_syms=header_syms, len_tag_key=length_tag_key, frame_len_tag_key=frame_length_tag_key, bits_per_header_sym=1, bits_per_payload_sym=payload_mod.bits_per_symbol(), scramble_header=False)
         self.header_equalizer = header_equalizer = digital.ofdm_equalizer_simpledfe(fft_len, header_mod.base(), occupied_carriers, pilot_carriers, pilot_symbols)
         self.cp_len = cp_len = fft_len // 4
@@ -362,53 +362,6 @@ class deepwive_tx_ofdm_custom(gr.top_block, Qt.QWidget):
 
         self._qtgui_time_sink_x_2_0_win = sip.wrapinstance(self.qtgui_time_sink_x_2_0.pyqwidget(), Qt.QWidget)
         self.top_layout.addWidget(self._qtgui_time_sink_x_2_0_win)
-        self.qtgui_time_sink_x_2 = qtgui.time_sink_f(
-            1024, #size
-            samp_rate, #samp_rate
-            "Sync Long Corr", #name
-            1 #number of inputs
-        )
-        self.qtgui_time_sink_x_2.set_update_time(0.10)
-        self.qtgui_time_sink_x_2.set_y_axis(-1, 1)
-
-        self.qtgui_time_sink_x_2.set_y_label('Amplitude', "")
-
-        self.qtgui_time_sink_x_2.enable_tags(True)
-        self.qtgui_time_sink_x_2.set_trigger_mode(qtgui.TRIG_MODE_FREE, qtgui.TRIG_SLOPE_POS, 0.0, 0, 0, "")
-        self.qtgui_time_sink_x_2.enable_autoscale(True)
-        self.qtgui_time_sink_x_2.enable_grid(False)
-        self.qtgui_time_sink_x_2.enable_axis_labels(True)
-        self.qtgui_time_sink_x_2.enable_control_panel(False)
-        self.qtgui_time_sink_x_2.enable_stem_plot(False)
-
-
-        labels = ['Signal 1', 'Signal 2', 'Signal 3', 'Signal 4', 'Signal 5',
-            'Signal 6', 'Signal 7', 'Signal 8', 'Signal 9', 'Signal 10']
-        widths = [1, 1, 1, 1, 1,
-            1, 1, 1, 1, 1]
-        colors = ['blue', 'red', 'green', 'black', 'cyan',
-            'magenta', 'yellow', 'dark red', 'dark green', 'dark blue']
-        alphas = [1.0, 1.0, 1.0, 1.0, 1.0,
-            1.0, 1.0, 1.0, 1.0, 1.0]
-        styles = [1, 1, 1, 1, 1,
-            1, 1, 1, 1, 1]
-        markers = [-1, -1, -1, -1, -1,
-            -1, -1, -1, -1, -1]
-
-
-        for i in range(1):
-            if len(labels[i]) == 0:
-                self.qtgui_time_sink_x_2.set_line_label(i, "Data {0}".format(i))
-            else:
-                self.qtgui_time_sink_x_2.set_line_label(i, labels[i])
-            self.qtgui_time_sink_x_2.set_line_width(i, widths[i])
-            self.qtgui_time_sink_x_2.set_line_color(i, colors[i])
-            self.qtgui_time_sink_x_2.set_line_style(i, styles[i])
-            self.qtgui_time_sink_x_2.set_line_marker(i, markers[i])
-            self.qtgui_time_sink_x_2.set_line_alpha(i, alphas[i])
-
-        self._qtgui_time_sink_x_2_win = sip.wrapinstance(self.qtgui_time_sink_x_2.pyqwidget(), Qt.QWidget)
-        self.top_layout.addWidget(self._qtgui_time_sink_x_2_win)
         self.qtgui_time_sink_x_1 = qtgui.time_sink_f(
             1024, #size
             samp_rate, #samp_rate
@@ -668,7 +621,7 @@ class deepwive_tx_ofdm_custom(gr.top_block, Qt.QWidget):
         self.digital_ofdm_carrier_allocator_cvc_0_0 = digital.ofdm_carrier_allocator_cvc( fft_len, occupied_carriers, pilot_carriers, pilot_symbols, sync_word, length_tag_key, True)
         self.deepwive_v1_ofdm_sync_short_0 = deepwive_v1.ofdm_sync_short(0.56, 2, False, False)
         self.deepwive_v1_ofdm_sync_long_0 = deepwive_v1.ofdm_sync_long(sync_length, False, False)
-        self.deepwive_v1_ofdm_frame_equalizer_0 = deepwive_v1.ofdm_frame_equalizer(tx_freq, samp_rate, packet_len, False, True)
+        self.deepwive_v1_ofdm_frame_equalizer_0 = deepwive_v1.ofdm_frame_equalizer(tx_freq, samp_rate, packet_len, False, False)
         self.deepwive_v1_deepwive_v1_source_1 = deepwive_v1.deepwive_v1_source('/home/tt2114/workspace/gr-deepwive_v1/examples/test_files/v_YoYo_g25_c05.avi', 240,
         '/home/tt2114/workspace/gr-deepwive_v1/examples/test_files/key_encoder.trt', '/home/tt2114/workspace/gr-deepwive_v1/examples/test_files/interp_encoder.trt', '/home/tt2114/workspace/gr-deepwive_v1/examples/test_files/ssf_net.trt', '/home/tt2114/workspace/gr-deepwive_v1/examples/test_files/bw_allocator.trt',
         packet_len, 20., 20, 5, False)
@@ -705,6 +658,9 @@ class deepwive_tx_ofdm_custom(gr.top_block, Qt.QWidget):
         self.connect((self.blocks_moving_average_xx_0, 0), (self.blocks_divide_xx_0, 1))
         self.connect((self.blocks_moving_average_xx_1, 0), (self.blocks_complex_to_mag_0, 0))
         self.connect((self.blocks_moving_average_xx_1, 0), (self.deepwive_v1_ofdm_sync_short_0, 1))
+        self.connect((self.blocks_multiply_const_vxx_0, 0), (self.blocks_complex_to_mag_squared_0, 0))
+        self.connect((self.blocks_multiply_const_vxx_0, 0), (self.blocks_delay_0_0, 0))
+        self.connect((self.blocks_multiply_const_vxx_0, 0), (self.blocks_multiply_xx_0_0, 0))
         self.connect((self.blocks_multiply_const_vxx_0, 0), (self.blocks_tag_gate_0, 0))
         self.connect((self.blocks_multiply_xx_0_0, 0), (self.blocks_moving_average_xx_1, 0))
         self.connect((self.blocks_stream_to_tagged_stream_0, 0), (self.digital_ofdm_carrier_allocator_cvc_0_0, 0))
@@ -719,7 +675,6 @@ class deepwive_tx_ofdm_custom(gr.top_block, Qt.QWidget):
         self.connect((self.deepwive_v1_deepwive_v1_source_1, 0), (self.qtgui_const_sink_x_1, 0))
         self.connect((self.deepwive_v1_ofdm_frame_equalizer_0, 0), (self.blocks_vector_to_stream_0_0, 0))
         self.connect((self.deepwive_v1_ofdm_sync_long_0, 0), (self.blocks_stream_to_vector_0, 0))
-        self.connect((self.deepwive_v1_ofdm_sync_long_0, 1), (self.qtgui_time_sink_x_2, 0))
         self.connect((self.deepwive_v1_ofdm_sync_long_0, 0), (self.qtgui_time_sink_x_2_0_0_0, 0))
         self.connect((self.deepwive_v1_ofdm_sync_short_0, 0), (self.blocks_delay_1, 0))
         self.connect((self.deepwive_v1_ofdm_sync_short_0, 0), (self.deepwive_v1_ofdm_sync_long_0, 0))
@@ -730,9 +685,6 @@ class deepwive_tx_ofdm_custom(gr.top_block, Qt.QWidget):
         self.connect((self.fft_vxx_0, 0), (self.digital_ofdm_cyclic_prefixer_0, 0))
         self.connect((self.fft_vxx_0_1, 0), (self.blocks_vector_to_stream_0, 0))
         self.connect((self.fft_vxx_0_1, 0), (self.deepwive_v1_ofdm_frame_equalizer_0, 0))
-        self.connect((self.limesdr_source_0, 0), (self.blocks_complex_to_mag_squared_0, 0))
-        self.connect((self.limesdr_source_0, 0), (self.blocks_delay_0_0, 0))
-        self.connect((self.limesdr_source_0, 0), (self.blocks_multiply_xx_0_0, 0))
         self.connect((self.limesdr_source_0, 0), (self.qtgui_freq_sink_x_0_0, 0))
 
 
@@ -864,7 +816,6 @@ class deepwive_tx_ofdm_custom(gr.top_block, Qt.QWidget):
         self.qtgui_freq_sink_x_0_0.set_frequency_range(0, self.samp_rate)
         self.qtgui_time_sink_x_0.set_samp_rate(self.samp_rate)
         self.qtgui_time_sink_x_1.set_samp_rate(self.samp_rate)
-        self.qtgui_time_sink_x_2.set_samp_rate(self.samp_rate)
         self.qtgui_time_sink_x_2_0.set_samp_rate(self.samp_rate)
         self.qtgui_time_sink_x_2_0_0_0.set_samp_rate(self.samp_rate)
         self.qtgui_time_sink_x_2_0_0_0_0.set_samp_rate(self.samp_rate)
