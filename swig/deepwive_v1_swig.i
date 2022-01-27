@@ -14,6 +14,7 @@
 #include "deepwive_v1/header_format.h"
 #include "deepwive_v1/ofdm_sync_short.h"
 #include "deepwive_v1/ofdm_sync_long.h"
+#include "deepwive_v1/ofdm_frame_equalizer.h"
 %}
 
 %include "gnuradio/digital/ofdm_equalizer_base.h"
@@ -58,6 +59,8 @@ header_format = header_format .make;
 
 %include "deepwive_v1/ofdm_sync_short.h"
 %include "deepwive_v1/ofdm_sync_long.h"
+%include "deepwive_v1/ofdm_frame_equalizer.h"
 
 GR_SWIG_BLOCK_MAGIC2(deepwive_v1, ofdm_sync_short);
 GR_SWIG_BLOCK_MAGIC2(deepwive_v1, ofdm_sync_long);
+GR_SWIG_BLOCK_MAGIC2(deepwive_v1, ofdm_frame_equalizer);

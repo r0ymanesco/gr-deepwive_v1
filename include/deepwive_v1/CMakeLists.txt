@@ -27,5 +27,6 @@ install(FILES
     deepwive_packet_header.h
     header_format.h
     ofdm_sync_short.h
-    ofdm_sync_long.h DESTINATION include/deepwive_v1
+    ofdm_sync_long.h
+    ofdm_frame_equalizer.h DESTINATION include/deepwive_v1
 )

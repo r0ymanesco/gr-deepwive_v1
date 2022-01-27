@@ -27,7 +27,8 @@ list(APPEND deepwive_v1_sources
     deepwive_packet_header.cc
     header_format.cc
     ofdm_sync_short.cc
-    ofdm_sync_long.cc )
+    ofdm_sync_long.cc
+    ofdm_frame_equalizer_impl.cc )
 
 set(deepwive_v1_sources "${deepwive_v1_sources}" PARENT_SCOPE)
 if(NOT deepwive_v1_sources)

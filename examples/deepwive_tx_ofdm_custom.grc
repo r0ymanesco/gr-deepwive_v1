@@ -148,7 +148,7 @@ blocks:
   id: variable
   parameters:
     comment: ''
-    value: '720'
+    value: '1440'
   states:
     bus_sink: false
     bus_source: false
@@ -297,7 +297,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [776, 1340.0]
+    coordinate: [784, 1388.0]
     rotation: 0
     state: enabled
 - name: sync_word
@@ -378,6 +378,18 @@ blocks:
     coordinate: [1448, 596.0]
     rotation: 0
     state: enabled
+- name: tx_freq
+  id: variable
+  parameters:
+    comment: ''
+    value: 0.9e9
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [216, 132.0]
+    rotation: 0
+    state: true
 - name: analog_frequency_modulator_fc_0
   id: analog_frequency_modulator_fc
   parameters:
@@ -476,7 +488,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [312, 964.0]
+    coordinate: [328, 964.0]
     rotation: 0
     state: enabled
 - name: blocks_delay_1
@@ -562,7 +574,7 @@ blocks:
     affinity: ''
     alias: ''
     comment: ''
-    const: '0.1'
+    const: '0.05'
     maxoutbuf: '0'
     minoutbuf: '0'
     type: complex
@@ -717,9 +729,27 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1392, 1192.0]
+    coordinate: [1416, 1280.0]
     rotation: 0
     state: true
+- name: blocks_vector_to_stream_0_0
+  id: blocks_vector_to_stream
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    num_items: '48'
+    type: complex
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1000, 1576.0]
+    rotation: 180
+    state: enabled
 - name: blocks_vector_to_stream_1
   id: blocks_vector_to_stream
   parameters:
@@ -787,13 +817,33 @@ blocks:
     coordinate: [24, 252.0]
     rotation: 0
     state: enabled
+- name: deepwive_v1_ofdm_frame_equalizer_0
+  id: deepwive_v1_ofdm_frame_equalizer
+  parameters:
+    affinity: ''
+    alias: ''
+    bw: samp_rate
+    comment: ''
+    debug: 'True'
+    freq: tx_freq
+    log: 'False'
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    packet_len: packet_len
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1200, 1540.0]
+    rotation: 180
+    state: enabled
 - name: deepwive_v1_ofdm_sync_long_0
   id: deepwive_v1_ofdm_sync_long
   parameters:
     affinity: ''
     alias: ''
     comment: ''
-    debug: 'True'
+    debug: 'False'
     log: 'False'
     maxoutbuf: '0'
     minoutbuf: '0'
@@ -802,7 +852,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [744, 1220.0]
+    coordinate: [768, 1260.0]
     rotation: 0
     state: enabled
 - name: deepwive_v1_ofdm_sync_short_0
@@ -1192,7 +1242,7 @@ blocks:
     oversample: '0'
     pa_path_ch0: '1'
     pa_path_ch1: '1'
-    rf_freq: 0.9e9
+    rf_freq: tx_freq
     samp_rate: samp_rate
     serial: 00090706024F2436
   states:
@@ -1228,7 +1278,7 @@ blocks:
     nco_freq_ch0: '0'
     nco_freq_ch1: '0'
     oversample: '0'
-    rf_freq: 0.9e9
+    rf_freq: tx_freq
     samp_rate: samp_rate
     serial: 00090706024F2436
   states:
@@ -1870,7 +1920,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [992, 1436.0]
+    coordinate: [1000, 1332.0]
     rotation: 0
     state: enabled
 - name: qtgui_time_sink_x_2_0
@@ -1967,7 +2017,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [544, 1356.0]
+    coordinate: [544, 1380.0]
     rotation: 0
     state: true
 - name: qtgui_time_sink_x_2_0_0_0
@@ -2064,7 +2114,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [976, 1164.0]
+    coordinate: [1000, 1172.0]
     rotation: 0
     state: true
 - name: qtgui_time_sink_x_2_0_0_0_0
@@ -2258,9 +2308,106 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1360, 1068.0]
+    coordinate: [1440, 1068.0]
     rotation: 0
     state: true
+- name: qtgui_time_sink_x_3_0
+  id: qtgui_time_sink_x
+  parameters:
+    affinity: ''
+    alias: ''
+    alpha1: '1.0'
+    alpha10: '1.0'
+    alpha2: '1.0'
+    alpha3: '1.0'
+    alpha4: '1.0'
+    alpha5: '1.0'
+    alpha6: '1.0'
+    alpha7: '1.0'
+    alpha8: '1.0'
+    alpha9: '1.0'
+    autoscale: 'True'
+    axislabels: 'True'
+    color1: blue
+    color10: dark blue
+    color2: red
+    color3: green
+    color4: black
+    color5: cyan
+    color6: magenta
+    color7: yellow
+    color8: dark red
+    color9: dark green
+    comment: ''
+    ctrlpanel: 'False'
+    entags: 'True'
+    grid: 'False'
+    gui_hint: ''
+    label1: Signal 1
+    label10: Signal 10
+    label2: Signal 2
+    label3: Signal 3
+    label4: Signal 4
+    label5: Signal 5
+    label6: Signal 6
+    label7: Signal 7
+    label8: Signal 8
+    label9: Signal 9
+    legend: 'True'
+    marker1: '-1'
+    marker10: '-1'
+    marker2: '-1'
+    marker3: '-1'
+    marker4: '-1'
+    marker5: '-1'
+    marker6: '-1'
+    marker7: '-1'
+    marker8: '-1'
+    marker9: '-1'
+    name: '"Rx Payload"'
+    nconnections: '1'
+    size: '1024'
+    srate: samp_rate
+    stemplot: 'False'
+    style1: '1'
+    style10: '1'
+    style2: '1'
+    style3: '1'
+    style4: '1'
+    style5: '1'
+    style6: '1'
+    style7: '1'
+    style8: '1'
+    style9: '1'
+    tr_chan: '0'
+    tr_delay: '0'
+    tr_level: '0.0'
+    tr_mode: qtgui.TRIG_MODE_FREE
+    tr_slope: qtgui.TRIG_SLOPE_POS
+    tr_tag: '""'
+    type: complex
+    update_time: '0.10'
+    width1: '1'
+    width10: '1'
+    width2: '1'
+    width3: '1'
+    width4: '1'
+    width5: '1'
+    width6: '1'
+    width7: '1'
+    width8: '1'
+    width9: '1'
+    ylabel: Amplitude
+    ymax: '1'
+    ymin: '-1'
+    yunit: '""'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [752, 1548.0]
+    rotation: 180
+    state: enabled
 - name: virtual_sink_0
   id: virtual_sink
   parameters:
@@ -2336,20 +2483,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [384, 700.0]
-    rotation: 0
-    state: true
-- name: virtual_sink_3
-  id: virtual_sink
-  parameters:
-    alias: ''
-    comment: ''
-    stream_id: rx_fft
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [1416, 1276.0]
+    coordinate: [440, 572.0]
     rotation: 0
     state: true
 - name: virtual_source_0
@@ -2357,12 +2491,12 @@ blocks:
   parameters:
     alias: ''
     comment: ''
-    stream_id: time
+    stream_id: sdr
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [16, 964.0]
+    coordinate: [80, 932.0]
     rotation: 0
     state: true
 - name: virtual_source_0_0_0_0
@@ -2445,9 +2579,11 @@ connections:
 - [blocks_tag_gate_0, '0', qtgui_time_sink_x_0, '0']
 - [blocks_tagged_stream_to_pdu_0, pdus, deepwive_v1_deepwive_v1_sink_0, pdu_in]
 - [blocks_vector_to_stream_0, '0', qtgui_time_sink_x_3, '0']
+- [blocks_vector_to_stream_0_0, '0', qtgui_time_sink_x_3_0, '0']
 - [blocks_vector_to_stream_1, '0', qtgui_time_sink_x_2_0_0_0_0, '0']
 - [deepwive_v1_deepwive_v1_source_1, '0', blocks_stream_to_tagged_stream_0, '0']
 - [deepwive_v1_deepwive_v1_source_1, '0', qtgui_const_sink_x_1, '0']
+- [deepwive_v1_ofdm_frame_equalizer_0, '0', blocks_vector_to_stream_0_0, '0']
 - [deepwive_v1_ofdm_sync_long_0, '0', blocks_stream_to_vector_0, '0']
 - [deepwive_v1_ofdm_sync_long_0, '0', qtgui_time_sink_x_2_0_0_0, '0']
 - [deepwive_v1_ofdm_sync_long_0, '1', qtgui_time_sink_x_2, '0']
@@ -2459,7 +2595,7 @@ connections:
 - [digital_ofdm_cyclic_prefixer_0, '0', virtual_sink_0, '0']
 - [fft_vxx_0, '0', digital_ofdm_cyclic_prefixer_0, '0']
 - [fft_vxx_0_1, '0', blocks_vector_to_stream_0, '0']
-- [fft_vxx_0_1, '0', virtual_sink_3, '0']
+- [fft_vxx_0_1, '0', deepwive_v1_ofdm_frame_equalizer_0, '0']
 - [limesdr_source_0, '0', qtgui_freq_sink_x_0_0, '0']
 - [limesdr_source_0, '0', virtual_sink_2, '0']
 - [virtual_source_0, '0', blocks_complex_to_mag_squared_0, '0']
