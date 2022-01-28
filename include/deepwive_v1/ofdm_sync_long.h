@@ -43,7 +43,7 @@ namespace gr {
     {
     public:
       typedef boost::shared_ptr<ofdm_sync_long> sptr;
-      static sptr make (unsigned int sync_length, bool log = false, bool debug = false);
+      static sptr make (unsigned int sync_length, bool log, bool debug);
     private:
     };
 

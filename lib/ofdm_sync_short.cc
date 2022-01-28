@@ -86,7 +86,7 @@ public:
                         d_freq_offset = arg(in_abs[i]) / 16;
                         d_plateau = 0;
                         insert_tag(nitems_written(0), d_freq_offset, nitems_read(0) + i);
-                        dout << "SHORT Frame!" << std::endl;
+                        // dout << "SHORT Frame! " << nitems_read(0) + i << std::endl;
                         break;
                     }
                 } else {
@@ -108,12 +108,12 @@ public:
 
                         // there's another frame
                     } else if (d_copied > MIN_GAP) {
+                        dout << "SHORT copied " << d_copied << std::endl;
                         d_copied = 0;
                         d_plateau = 0;
                         d_freq_offset = arg(in_abs[o]) / 16;
-                        insert_tag(
-                            nitems_written(0) + o, d_freq_offset, nitems_read(0) + o);
-                        dout << "SHORT Frame!" << std::endl;
+                        insert_tag(nitems_written(0) + o, d_freq_offset, nitems_read(0) + o);
+                        // dout << "SHORT Frame! " << nitems_read(0) + o << std::endl;
                         break;
                     }
 
@@ -127,10 +127,10 @@ public:
             }
 
             if (d_copied == MAX_SAMPLES) {
+                dout << "max samples reached" << std::endl;
                 d_state = SEARCH;
             }
 
-            dout << "SHORT copied " << o << std::endl;
 
             consume_each(o);
             return o;
@@ -141,9 +141,17 @@ public:
         return 0;
     }
 
+    // void forecast(int noutput_items, gr_vector_int& ninput_items_required)
+    // {
+    //     ninput_items_required[0] = noutput_items;
+    //     ninput_items_required[1] = noutput_items;
+    //     ninput_items_required[2] = noutput_items;
+    // }
+
     void insert_tag(uint64_t item, double freq_offset, uint64_t input_item)
     {
         mylog(boost::format("frame start at in: %2% out: %1%") % item % input_item);
+        // dout << "symbol start " << item << std::endl;
 
         const pmt::pmt_t key = pmt::string_to_symbol("symbol_start");
         const pmt::pmt_t value = pmt::from_double(freq_offset);

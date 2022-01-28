@@ -4,7 +4,8 @@ category: '[deepwive_v1]'
 
 templates:
   imports: import deepwive_v1
-  make: deepwive_v1.ofdm_sync_long(${sync_length}, ${log}, ${debug})
+  make: |-
+    deepwive_v1.ofdm_sync_long(${sync_length}, ${log}, ${debug})
 
 #  Make one 'parameters' list entry for every parameter you want settable from the GUI.
 #     Keys include:
@@ -28,6 +29,9 @@ parameters:
     label: Sync Length
     dtype: int
     default: '240'
+# -   id: packet_len
+#     label: Packet Length
+#     dtype: int
 
 #  Make one 'inputs' list entry per input and one 'outputs' list entry per output.
 #  Keys include:

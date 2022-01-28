@@ -43,7 +43,7 @@ namespace gr {
     ofdm_frame_equalizer_impl::ofdm_frame_equalizer_impl(double freq, double bw, int packet_len, bool log, bool debug)
       : gr::block("ofdm_frame_equalizer",
                   gr::io_signature::make(1, 1, 64*sizeof(gr_complex)),
-                  gr::io_signature::make(1, 1, 48*sizeof(gr_complex))),
+                  gr::io_signature::make(0, 0, 0)),
         d_current_symbol(0),
         d_log(log),
         d_debug(debug),
@@ -52,7 +52,7 @@ namespace gr {
         d_freq_offset_from_synclong(0.0),
         d_packet_len(packet_len)
     {
-      // message_port_register_out(pmt::mp("payload_IQ"));
+      message_port_register_out(pmt::mp("payload_IQ"));
       set_tag_propagation_policy(block::TPP_DONT);
     }
 
@@ -83,27 +83,45 @@ namespace gr {
       gr::thread::scoped_lock lock(d_mutex);
 
       const gr_complex* in = (const gr_complex*) input_items[0];
-      gr_complex* out = (gr_complex*) output_items[0];
+      // gr_complex* out = (gr_complex*) output_items[0];
 
       int i = 0;
       int o = 0;
       gr_complex symbols[48];
       gr_complex current_symbol[64];
 
-      dout << "FRAME EQUALIZER: input " << ninput_items[0] << "  output " << noutput_items
-         << std::endl;
+      // dout << "FRAME EQUALIZER: input " << ninput_items[0] << "  output " << noutput_items
+      //    << std::endl;
 
       while ((i < ninput_items[0]) && (o < noutput_items)){
         get_tags_in_window(tags, 0, i, i+1, pmt::string_to_symbol("data_start"));
 
         //new frame
         if (tags.size()) {
+
+          if (d_current_symbol > 2){
+            pmt::pmt_t dict = pmt::make_dict();
+            dict = pmt::dict_add(
+              dict, pmt::mp("packet_len"), pmt::from_long(d_packet_len));
+            dict = pmt::dict_add(
+              dict, pmt::mp("first_flag"), pmt::from_long(d_first_flag));
+            dict = pmt::dict_add(
+              dict, pmt::mp("alloc_idx"), pmt::from_long(d_alloc_idx));
+            dict = pmt::dict_add(
+              dict, pmt::mp("snr"), pmt::from_double(get_snr()));
+
+            message_port_pub(
+              pmt::mp("payload_IQ"),
+              pmt::cons(dict, pmt::init_c32vector(payload_symbols.size(), payload_symbols)));
+          }
+
           dout << "n frames produced " << d_current_symbol << std::endl;
           dout << "n payload symbols produced " << d_payload_symbols << std::endl;
           dout << "packet len " << d_packet_len << std::endl;
-          // dout << "found start" << std::endl;
+
           d_current_symbol = 0;
           d_payload_symbols = 0;
+          payload_symbols.clear();
 
           d_freq_offset_from_synclong = pmt::to_double(tags.front().value) * d_bw / (2 * M_PI);
           d_epsilon0 = pmt::to_double(tags.front().value) * d_bw / (2 * M_PI * d_freq);
@@ -112,7 +130,7 @@ namespace gr {
           // dout << "epsilon: " << d_epsilon0 << std::endl;
         }
         else if (d_payload_symbols >= d_packet_len) {
-          // dout << "not interesting; skip" << std::endl;
+          dout << "not interesting; skip" << std::endl;
           i++;
           continue;
         }
@@ -175,32 +193,35 @@ namespace gr {
         if (d_current_symbol == 2) {
           extract_from_header(bits);
 
-          add_item_tag(0,
-                       nitems_written(0) + o,
-                       pmt::intern("packet_len"),
-                       pmt::from_long(d_packet_len));
-          add_item_tag(0,
-                       nitems_written(0) + o,
-                       pmt::intern("first_flag"),
-                       pmt::from_uint64(d_first_flag));
-          add_item_tag(0,
-                       nitems_written(0) + o,
-                       pmt::intern("alloc_idx"),
-                       pmt::from_uint64(d_alloc_idx));
-          add_item_tag(0,
-                       nitems_written(0) + o,
-                       pmt::intern("snr"),
-                       pmt::from_double(get_snr()));
+          // add_item_tag(0,
+          //              nitems_written(0) + o,
+          //              pmt::intern("packet_len"),
+          //              pmt::from_long(d_packet_len));
+          // add_item_tag(0,
+          //              nitems_written(0) + o,
+          //              pmt::intern("first_flag"),
+          //              pmt::from_uint64(d_first_flag));
+          // add_item_tag(0,
+          //              nitems_written(0) + o,
+          //              pmt::intern("alloc_idx"),
+          //              pmt::from_uint64(d_alloc_idx));
+          // add_item_tag(0,
+          //              nitems_written(0) + o,
+          //              pmt::intern("snr"),
+          //              pmt::from_double(get_snr()));
 
-          std::vector<gr_complex> csi = get_csi();
-          add_item_tag(0,
-                       nitems_written(0) + o,
-                       pmt::intern("csi"),
-                       pmt::init_c32vector(csi.size(), csi));
+          // std::vector<gr_complex> csi = get_csi();
+          // add_item_tag(0,
+          //              nitems_written(0) + o,
+          //              pmt::intern("csi"),
+          //              pmt::init_c32vector(csi.size(), csi));
         }
 
         if (d_current_symbol > 2){
-          std::memcpy(out + o * 48, symbols, 48 * sizeof(gr_complex));
+          // std::memcpy(out + o * 48, symbols, 48 * sizeof(gr_complex));
+          for (int i = 0; i < 48; i++) {
+            payload_symbols.push_back(symbols[i]);
+          }
           o++;
           d_payload_symbols += 48;
         }

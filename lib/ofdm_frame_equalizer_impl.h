@@ -59,6 +59,7 @@ namespace gr {
         unsigned d_alloc_idx;
         const double alpha = 0.5;
         int d_payload_symbols = 0;
+        std::vector<gr_complex> payload_symbols;
 
         const gr_complex POLARITY[127] = {
         1,  1,  1,  1,  -1, -1, -1, 1,  -1, -1, -1, -1, 1,  1,  -1, 1,  -1, -1, 1, 1,  -1, 1,

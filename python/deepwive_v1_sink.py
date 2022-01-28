@@ -427,7 +427,8 @@ class deepwive_v1_sink(gr.basic_block):
         assert received_IQ.shape[0] == self.packet_len
         self.curr_frame_packets.append(received_IQ)
 
-        first_flag = bool(tags['first'])
+        first_flag = bool(tags['first_flag'])
+        self.first_buffer.append(first_flag)
         # print(first_flag)
         detect_first = self._first_frame_detection(first_flag)
 
@@ -474,6 +475,7 @@ class deepwive_v1_sink(gr.basic_block):
         self.errs = 0
         self.curr_frame_packets = []
         self.frame_buffer = []
+        self.first_buffer = []
         self.alloc_buffer = []
 
     def _video_reset(self):
