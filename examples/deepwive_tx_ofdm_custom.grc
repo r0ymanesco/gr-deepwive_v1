@@ -41,7 +41,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1048, 132.0]
+    coordinate: [208, 76.0]
     rotation: 0
     state: true
 - name: fft_len
@@ -65,58 +65,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1160, 4.0]
-    rotation: 0
-    state: enabled
-- name: header_equalizer
-  id: variable
-  parameters:
-    comment: ''
-    value: digital.ofdm_equalizer_simpledfe(fft_len, header_mod.base(), occupied_carriers,
-      pilot_carriers, pilot_symbols)
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [1112, 68.0]
-    rotation: 0
-    state: enabled
-- name: header_formatter
-  id: variable
-  parameters:
-    comment: ''
-    value: deepwive_packet_header(occupied_carriers, n_syms=header_syms, len_tag_key=length_tag_key,
-      frame_len_tag_key=frame_length_tag_key, bits_per_header_sym=1, bits_per_payload_sym=payload_mod.bits_per_symbol(),
-      scramble_header=False)
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [912, 68.0]
-    rotation: 0
-    state: enabled
-- name: header_mod
-  id: variable
-  parameters:
-    comment: ''
-    value: digital.constellation_bpsk()
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [584, 4.0]
-    rotation: 0
-    state: enabled
-- name: header_syms
-  id: variable
-  parameters:
-    comment: ''
-    value: '1'
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [920, 132.0]
+    coordinate: [976, 4.0]
     rotation: 0
     state: enabled
 - name: length_tag_key
@@ -140,7 +89,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [344, 132.0]
+    coordinate: [296, 76.0]
     rotation: 0
     state: enabled
 - name: occupied_carriers
@@ -153,7 +102,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [504, 60.0]
+    coordinate: [408, 76.0]
     rotation: 0
     state: enabled
 - name: packet_len
@@ -166,19 +115,6 @@ blocks:
     bus_source: false
     bus_structure: null
     coordinate: [488, 4.0]
-    rotation: 0
-    state: enabled
-- name: payload_equalizer
-  id: variable
-  parameters:
-    comment: ''
-    value: digital.ofdm_equalizer_static(fft_len, occupied_carriers, pilot_carriers,
-      pilot_symbols, 1)
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [1312, 68.0]
     rotation: 0
     state: enabled
 - name: payload_mod
@@ -202,7 +138,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [664, 60.0]
+    coordinate: [600, 4.0]
     rotation: 0
     state: enabled
 - name: pilot_symbols
@@ -240,19 +176,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [776, 132.0]
-    rotation: 0
-    state: enabled
-- name: pilot_symbols_old
-  id: variable
-  parameters:
-    comment: ''
-    value: ((1, 1, 1, -1,),)
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [792, 60.0]
+    coordinate: [752, 76.0]
     rotation: 0
     state: enabled
 - name: rolloff
@@ -300,18 +224,6 @@ blocks:
     coordinate: [264, 4.0]
     rotation: 0
     state: enabled
-- name: sync_length
-  id: variable
-  parameters:
-    comment: ''
-    value: '320'
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [744, 1180.0]
-    rotation: 0
-    state: enabled
 - name: sync_word
   id: variable
   parameters:
@@ -342,31 +254,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [608, 132.0]
-    rotation: 0
-    state: enabled
-- name: sync_word1
-  id: variable
-  parameters:
-    comment: ''
-    value: sync_word[0]
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [200, 60.0]
-    rotation: 0
-    state: enabled
-- name: sync_word2
-  id: variable
-  parameters:
-    comment: ''
-    value: sync_word[2]
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [328, 60.0]
+    coordinate: [584, 76.0]
     rotation: 0
     state: enabled
 - name: tun_gain
@@ -399,7 +287,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [216, 132.0]
+    coordinate: [904, 68.0]
     rotation: 0
     state: true
 - name: analog_frequency_modulator_fc_0
@@ -521,7 +409,7 @@ blocks:
     bus_structure: null
     coordinate: [552, 1292.0]
     rotation: 0
-    state: enabled
+    state: disabled
 - name: blocks_divide_xx_0
   id: blocks_divide_xx
   parameters:
@@ -665,7 +553,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [856, 1524.0]
+    coordinate: [792, 1668.0]
     rotation: 180
     state: true
 - name: blocks_stream_to_tagged_stream_0
@@ -702,7 +590,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1000, 1280.0]
+    coordinate: [1000, 1272.0]
     rotation: 0
     state: true
 - name: blocks_stream_to_vector_0_0
@@ -720,7 +608,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [144, 1456.0]
+    coordinate: [544, 1528.0]
     rotation: 0
     state: true
 - name: blocks_tag_debug_0
@@ -863,8 +751,8 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [360, 1560.0]
-    rotation: 180
+    coordinate: [984, 1528.0]
+    rotation: 0
     state: true
 - name: blocks_vector_to_stream_1
   id: blocks_vector_to_stream
@@ -953,6 +841,29 @@ blocks:
     coordinate: [400, 1160.0]
     rotation: 0
     state: disabled
+- name: deepwive_v1_deepwive_v1_sink_0_1
+  id: deepwive_v1_deepwive_v1_sink
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    gop_size: '5'
+    interp_decoder_fn: '''/home/tt2114/workspace/gr-deepwive_v1/examples/test_files/interp_decoder.trt'''
+    key_decoder_fn: '''/home/tt2114/workspace/gr-deepwive_v1/examples/test_files/key_decoder.trt'''
+    model_cout: '240'
+    num_chunks: '20'
+    packet_len: packet_len
+    patience: '0'
+    snr: '20'
+    source_fn: '''/home/tt2114/workspace/gr-deepwive_v1/examples/test_files/v_YoYo_g25_c05.avi'''
+    use_fp16: 'False'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [704, 1748.0]
+    rotation: 180
+    state: enabled
 - name: deepwive_v1_deepwive_v1_sink_1
   id: deepwive_v1_deepwive_v1_sink
   parameters:
@@ -1085,7 +996,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1192, 1492.0]
+    coordinate: [1128, 1636.0]
     rotation: 180
     state: true
 - name: deepwive_v1_ofdm_sync_long_0
@@ -1094,16 +1005,16 @@ blocks:
     affinity: ''
     alias: ''
     comment: ''
-    debug: 'True'
+    debug: 'False'
     log: 'False'
     maxoutbuf: '0'
     minoutbuf: '0'
-    sync_length: sync_length
+    sync_length: '320'
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [768, 1260.0]
+    coordinate: [736, 1252.0]
     rotation: 0
     state: enabled
 - name: deepwive_v1_ofdm_sync_short_0
@@ -1117,7 +1028,7 @@ blocks:
     maxoutbuf: '0'
     min_plateau: '2'
     minoutbuf: '0'
-    threshold: '0.7'
+    threshold: '0.56'
   states:
     bus_sink: false
     bus_source: false
@@ -1177,59 +1088,11 @@ blocks:
     len_tag_key: '"packet_len"'
     maxoutbuf: '0'
     minoutbuf: max_symbols * 48 * 8
-    occupied_carriers: (list(range(-26, -21)) + list(range(-20, -7)) + list(range(-6,
-      0)) + list(range(1, 7)) + list(range(8, 21)) +list( range(22, 27)),)
+    occupied_carriers: occupied_carriers
     output_is_shifted: 'True'
-    pilot_carriers: ((-21, -7, 7, 21), )
-    pilot_symbols: ((1, 1, 1, -1), (1, 1, 1, -1), (1, 1, 1, -1), (1, 1, 1, -1), (-1,
-      -1, -1, 1), (-1, -1, -1, 1), (-1, -1, -1, 1), (1, 1, 1, -1), (-1, -1, -1, 1),
-      (-1, -1, -1, 1), (-1, -1, -1, 1), (-1, -1, -1, 1), (1, 1, 1, -1), (1, 1, 1,
-      -1), (-1, -1, -1, 1), (1, 1, 1, -1), (-1, -1, -1, 1), (-1, -1, -1, 1), (1, 1,
-      1, -1), (1, 1, 1, -1), (-1, -1, -1, 1), (1, 1, 1, -1), (1, 1, 1, -1), (-1, -1,
-      -1, 1), (1, 1, 1, -1), (1, 1, 1, -1), (1, 1, 1, -1), (1, 1, 1, -1), (1, 1, 1,
-      -1), (1, 1, 1, -1), (-1, -1, -1, 1), (1, 1, 1, -1), (1, 1, 1, -1), (1, 1, 1,
-      -1), (-1, -1, -1, 1), (1, 1, 1, -1), (1, 1, 1, -1), (-1, -1, -1, 1), (-1, -1,
-      -1, 1), (1, 1, 1, -1), (1, 1, 1, -1), (1, 1, 1, -1), (-1, -1, -1, 1), (1, 1,
-      1, -1), (-1, -1, -1, 1), (-1, -1, -1, 1), (-1, -1, -1, 1), (1, 1, 1, -1), (-1,
-      -1, -1, 1), (1, 1, 1, -1), (-1, -1, -1, 1), (-1, -1, -1, 1), (1, 1, 1, -1),
-      (-1, -1, -1, 1), (-1, -1, -1, 1), (1, 1, 1, -1), (1, 1, 1, -1), (1, 1, 1, -1),
-      (1, 1, 1, -1), (1, 1, 1, -1), (-1, -1, -1, 1), (-1, -1, -1, 1), (1, 1, 1, -1),
-      (1, 1, 1, -1), (-1, -1, -1, 1), (-1, -1, -1, 1), (1, 1, 1, -1), (-1, -1, -1,
-      1), (1, 1, 1, -1), (-1, -1, -1, 1), (1, 1, 1, -1), (1, 1, 1, -1), (-1, -1, -1,
-      1), (-1, -1, -1, 1), (-1, -1, -1, 1), (1, 1, 1, -1), (1, 1, 1, -1), (-1, -1,
-      -1, 1), (-1, -1, -1, 1), (-1, -1, -1, 1), (-1, -1, -1, 1), (1, 1, 1, -1), (-1,
-      -1, -1, 1), (-1, -1, -1, 1), (1, 1, 1, -1), (-1, -1, -1, 1), (1, 1, 1, -1),
-      (1, 1, 1, -1), (1, 1, 1, -1), (1, 1, 1, -1), (-1, -1, -1, 1), (1, 1, 1, -1),
-      (-1, -1, -1, 1), (1, 1, 1, -1), (-1, -1, -1, 1), (1, 1, 1, -1), (-1, -1, -1,
-      1), (-1, -1, -1, 1), (-1, -1, -1, 1), (-1, -1, -1, 1), (-1, -1, -1, 1), (1,
-      1, 1, -1), (-1, -1, -1, 1), (1, 1, 1, -1), (1, 1, 1, -1), (-1, -1, -1, 1), (1,
-      1, 1, -1), (-1, -1, -1, 1), (1, 1, 1, -1), (1, 1, 1, -1), (1, 1, 1, -1), (-1,
-      -1, -1, 1), (-1, -1, -1, 1), (1, 1, 1, -1), (-1, -1, -1, 1), (-1, -1, -1, 1),
-      (-1, -1, -1, 1), (1, 1, 1, -1), (1, 1, 1, -1), (1, 1, 1, -1), (-1, -1, -1, 1),
-      (-1, -1, -1, 1), (-1, -1, -1, 1), (-1, -1, -1, 1), (-1, -1, -1, 1), (-1, -1,
-      -1, 1), (-1, -1, -1, 1))
-    sync_words: ((0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, (1.4719601443879746+1.4719601443879746j),
-      0.0, 0.0, 0.0, (-1.4719601443879746-1.4719601443879746j), 0.0, 0.0, 0.0, (1.4719601443879746+1.4719601443879746j),
-      0.0, 0.0, 0.0, (-1.4719601443879746-1.4719601443879746j), 0.0, 0.0, 0.0, (-1.4719601443879746-1.4719601443879746j),
-      0.0, 0.0, 0.0, (1.4719601443879746+1.4719601443879746j), 0.0, 0.0, 0.0, 0.0,
-      0.0, 0.0, 0.0, (-1.4719601443879746-1.4719601443879746j), 0.0, 0.0, 0.0, (-1.4719601443879746-1.4719601443879746j),
-      0.0, 0.0, 0.0, (1.4719601443879746+1.4719601443879746j), 0.0, 0.0, 0.0, (1.4719601443879746+1.4719601443879746j),
-      0.0, 0.0, 0.0, (1.4719601443879746+1.4719601443879746j), 0.0, 0.0, 0.0, (1.4719601443879746+1.4719601443879746j),
-      0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0), (0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-      (1.4719601443879746+1.4719601443879746j), 0.0, 0.0, 0.0, (-1.4719601443879746-1.4719601443879746j),
-      0.0, 0.0, 0.0, (1.4719601443879746+1.4719601443879746j), 0.0, 0.0, 0.0, (-1.4719601443879746-1.4719601443879746j),
-      0.0, 0.0, 0.0, (-1.4719601443879746-1.4719601443879746j), 0.0, 0.0, 0.0, (1.4719601443879746+1.4719601443879746j),
-      0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, (-1.4719601443879746-1.4719601443879746j),
-      0.0, 0.0, 0.0, (-1.4719601443879746-1.4719601443879746j), 0.0, 0.0, 0.0, (1.4719601443879746+1.4719601443879746j),
-      0.0, 0.0, 0.0, (1.4719601443879746+1.4719601443879746j), 0.0, 0.0, 0.0, (1.4719601443879746+1.4719601443879746j),
-      0.0, 0.0, 0.0, (1.4719601443879746+1.4719601443879746j), 0.0, 0.0, 0.0, 0.0,
-      0.0, 0.0, 0.0), (0, 0j, 0, 0j, 0, 0j, -1, 1j, -1, 1j, -1, 1j, -1, -1j, 1, 1j,
-      1, -1j, -1, 1j, 1, 1j, 1, 1j, 1, 1j, -1, (-0-1j), 1, -1j, -1, 1j, 0, -1j, 1,
-      (-0-1j), 1, -1j, 1, 1j, -1, -1j, 1, (-0-1j), -1, 1j, 1, 1j, 1, 1j, 1, 1j, -1,
-      -1j, 1, 1j, 1, -1j, -1, 0j, 0, 0j, 0, 0j), (0, 0, 0, 0, 0, 0, 1, 1, -1, -1,
-      1, 1, -1, 1, -1, 1, 1, 1, 1, 1, 1, -1, -1, 1, 1, -1, 1, -1, 1, 1, 1, 1, 0, 1,
-      -1, -1, 1, 1, -1, 1, -1, 1, -1, -1, -1, -1, -1, 1, 1, -1, -1, 1, -1, 1, -1,
-      1, 1, 1, 1, 0, 0, 0, 0, 0))
+    pilot_carriers: pilot_carriers
+    pilot_symbols: pilot_symbols
+    sync_words: sync_word
   states:
     bus_sink: false
     bus_source: false
@@ -1458,7 +1321,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1192, 1244.0]
+    coordinate: [1192, 1236.0]
     rotation: 0
     state: enabled
 - name: fft_vxx_0_1_0
@@ -1479,7 +1342,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [328, 1420.0]
+    coordinate: [744, 1492.0]
     rotation: 0
     state: enabled
 - name: fft_vxx_1
@@ -1503,19 +1366,6 @@ blocks:
     coordinate: [376, 2360.0]
     rotation: 0
     state: disabled
-- name: import_0
-  id: import
-  parameters:
-    alias: ''
-    comment: ''
-    imports: from deepwive_v1 import deepwive_packet_header, soft_equalizer_single_tap
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [984, 12.0]
-    rotation: 0
-    state: true
 - name: limesdr_sink_0
   id: limesdr_sink
   parameters:
@@ -2315,7 +2165,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [552, 1348.0]
+    coordinate: [552, 1316.0]
     rotation: 0
     state: true
 - name: qtgui_time_sink_x_2_0_0_0
@@ -2412,7 +2262,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1000, 1172.0]
+    coordinate: [1000, 1140.0]
     rotation: 0
     state: true
 - name: qtgui_time_sink_x_2_0_0_0_0
@@ -2703,7 +2553,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [584, 1500.0]
+    coordinate: [520, 1644.0]
     rotation: 180
     state: true
 - name: qtgui_time_sink_x_3
@@ -2994,8 +2844,8 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [128, 1532.0]
-    rotation: 180
+    coordinate: [1184, 1500.0]
+    rotation: 0
     state: true
 - name: virtual_sink_0
   id: virtual_sink
@@ -3080,7 +2930,7 @@ blocks:
   parameters:
     alias: ''
     comment: ''
-    stream_id: sdr_input
+    stream_id: time
   states:
     bus_sink: false
     bus_source: false
@@ -3149,7 +2999,6 @@ connections:
 - [blocks_delay_0, '0', blocks_multiply_xx_0, '0']
 - [blocks_delay_0_0, '0', blocks_conjugate_cc_0, '0']
 - [blocks_delay_0_0, '0', deepwive_v1_ofdm_sync_short_0, '0']
-- [blocks_delay_1, '0', deepwive_v1_ofdm_sync_long_0, '1']
 - [blocks_divide_xx_0, '0', deepwive_v1_ofdm_sync_short_0, '2']
 - [blocks_divide_xx_0, '0', qtgui_time_sink_x_1, '0']
 - [blocks_moving_average_xx_0, '0', blocks_divide_xx_0, '1']
@@ -3157,9 +3006,7 @@ connections:
 - [blocks_moving_average_xx_1, '0', deepwive_v1_ofdm_sync_short_0, '1']
 - [blocks_multiply_const_vxx_0, '0', blocks_tag_gate_0, '0']
 - [blocks_multiply_const_vxx_0, '0', virtual_sink_2_0, '0']
-- [blocks_multiply_xx_0, '0', digital_header_payload_demux_0, '0']
 - [blocks_multiply_xx_0_0, '0', blocks_moving_average_xx_1, '0']
-- [blocks_pdu_to_tagged_stream_0, '0', qtgui_time_sink_x_2_0_0_0_1, '0']
 - [blocks_pdu_to_tagged_stream_1, '0', qtgui_time_sink_x_2_0_0_0_3, '0']
 - [blocks_stream_to_tagged_stream_0, '0', digital_ofdm_carrier_allocator_cvc_0_0_0,
   '0']
@@ -3168,26 +3015,17 @@ connections:
 - [blocks_tag_gate_0, '0', limesdr_sink_0, '0']
 - [blocks_tag_gate_0, '0', qtgui_freq_sink_x_0, '0']
 - [blocks_tag_gate_0, '0', qtgui_time_sink_x_0, '0']
-- [blocks_tagged_stream_to_pdu_0, pdus, deepwive_v1_deepwive_v1_sink_0, pdu_in]
 - [blocks_vector_to_stream_0, '0', qtgui_time_sink_x_3, '0']
-- [blocks_vector_to_stream_0_0, '0', blocks_tagged_stream_to_pdu_1, '0']
-- [blocks_vector_to_stream_0_0, '0', blocks_tagged_stream_to_pdu_2, '0']
-- [blocks_vector_to_stream_0_0, '0', qtgui_time_sink_x_3_0, '0']
 - [blocks_vector_to_stream_0_1, '0', qtgui_time_sink_x_3_1, '0']
 - [blocks_vector_to_stream_1, '0', qtgui_time_sink_x_2_0_0_0_0, '0']
 - [deepwive_v1_deepwive_v1_source_1, '0', blocks_stream_to_tagged_stream_0, '0']
 - [deepwive_v1_deepwive_v1_source_1, '0', qtgui_const_sink_x_1, '0']
-- [deepwive_v1_ofdm_frame_equalizer_0, payload_IQ, blocks_pdu_to_tagged_stream_0,
-  pdus]
-- [deepwive_v1_ofdm_frame_equalizer_0, payload_IQ, deepwive_v1_deepwive_v1_sink_2,
-  pdu_in]
 - [deepwive_v1_ofdm_frame_equalizer_1, payload_IQ, blocks_pdu_to_tagged_stream_1,
   pdus]
-- [deepwive_v1_ofdm_frame_equalizer_1, payload_IQ, deepwive_v1_deepwive_v1_sink_3,
+- [deepwive_v1_ofdm_frame_equalizer_1, payload_IQ, deepwive_v1_deepwive_v1_sink_0_1,
   pdu_in]
 - [deepwive_v1_ofdm_sync_long_0, '0', blocks_stream_to_vector_0, '0']
 - [deepwive_v1_ofdm_sync_long_0, '0', qtgui_time_sink_x_2_0_0_0, '0']
-- [deepwive_v1_ofdm_sync_short_0, '0', blocks_delay_1, '0']
 - [deepwive_v1_ofdm_sync_short_0, '0', blocks_stream_to_vector_0_0, '0']
 - [deepwive_v1_ofdm_sync_short_0, '0', deepwive_v1_ofdm_sync_long_0, '0']
 - [deepwive_v1_ofdm_sync_short_0, '0', qtgui_time_sink_x_2_0, '0']

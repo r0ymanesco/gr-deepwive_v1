@@ -25,7 +25,6 @@ from PyQt5 import Qt
 from gnuradio import qtgui
 from gnuradio.filter import firdes
 import sip
-from deepwive_v1 import deepwive_packet_header, soft_equalizer_single_tap
 from gnuradio import blocks
 from gnuradio import digital
 from gnuradio import fft
@@ -78,30 +77,21 @@ class deepwive_tx_ofdm_custom(gr.top_block, Qt.QWidget):
         ##################################################
         # Variables
         ##################################################
-        self.sync_word = sync_word = ((0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, (1.4719601443879746+1.4719601443879746j), 0.0, 0.0, 0.0, (-1.4719601443879746-1.4719601443879746j), 0.0, 0.0, 0.0, (1.4719601443879746+1.4719601443879746j), 0.0, 0.0, 0.0, (-1.4719601443879746-1.4719601443879746j), 0.0, 0.0, 0.0, (-1.4719601443879746-1.4719601443879746j), 0.0, 0.0, 0.0, (1.4719601443879746+1.4719601443879746j), 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, (-1.4719601443879746-1.4719601443879746j), 0.0, 0.0, 0.0, (-1.4719601443879746-1.4719601443879746j), 0.0, 0.0, 0.0, (1.4719601443879746+1.4719601443879746j), 0.0, 0.0, 0.0, (1.4719601443879746+1.4719601443879746j), 0.0, 0.0, 0.0, (1.4719601443879746+1.4719601443879746j), 0.0, 0.0, 0.0, (1.4719601443879746+1.4719601443879746j), 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0), (0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, (1.4719601443879746+1.4719601443879746j), 0.0, 0.0, 0.0, (-1.4719601443879746-1.4719601443879746j), 0.0, 0.0, 0.0, (1.4719601443879746+1.4719601443879746j), 0.0, 0.0, 0.0, (-1.4719601443879746-1.4719601443879746j), 0.0, 0.0, 0.0, (-1.4719601443879746-1.4719601443879746j), 0.0, 0.0, 0.0, (1.4719601443879746+1.4719601443879746j), 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, (-1.4719601443879746-1.4719601443879746j), 0.0, 0.0, 0.0, (-1.4719601443879746-1.4719601443879746j), 0.0, 0.0, 0.0, (1.4719601443879746+1.4719601443879746j), 0.0, 0.0, 0.0, (1.4719601443879746+1.4719601443879746j), 0.0, 0.0, 0.0, (1.4719601443879746+1.4719601443879746j), 0.0, 0.0, 0.0, (1.4719601443879746+1.4719601443879746j), 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0), (0, 0j, 0, 0j, 0, 0j, -1, 1j, -1, 1j, -1, 1j, -1, -1j, 1, 1j, 1, -1j, -1, 1j, 1, 1j, 1, 1j, 1, 1j, -1, (-0-1j), 1, -1j, -1, 1j, 0, -1j, 1, (-0-1j), 1, -1j, 1, 1j, -1, -1j, 1, (-0-1j), -1, 1j, 1, 1j, 1, 1j, 1, 1j, -1, -1j, 1, 1j, 1, -1j, -1, 0j, 0, 0j, 0, 0j), (0, 0, 0, 0, 0, 0, 1, 1, -1, -1, 1, 1, -1, 1, -1, 1, 1, 1, 1, 1, 1, -1, -1, 1, 1, -1, 1, -1, 1, 1, 1, 1, 0, 1, -1, -1, 1, 1, -1, 1, -1, 1, -1, -1, -1, -1, -1, 1, 1, -1, -1, 1, -1, 1, -1, 1, 1, 1, 1, 0, 0, 0, 0, 0))
-        self.pilot_symbols = pilot_symbols = ((1, 1, 1, -1), (1, 1, 1, -1), (1, 1, 1, -1), (1, 1, 1, -1), (-1, -1, -1, 1), (-1, -1, -1, 1), (-1, -1, -1, 1), (1, 1, 1, -1), (-1, -1, -1, 1), (-1, -1, -1, 1), (-1, -1, -1, 1), (-1, -1, -1, 1), (1, 1, 1, -1), (1, 1, 1, -1), (-1, -1, -1, 1), (1, 1, 1, -1), (-1, -1, -1, 1), (-1, -1, -1, 1), (1, 1, 1, -1), (1, 1, 1, -1), (-1, -1, -1, 1), (1, 1, 1, -1), (1, 1, 1, -1), (-1, -1, -1, 1), (1, 1, 1, -1), (1, 1, 1, -1), (1, 1, 1, -1), (1, 1, 1, -1), (1, 1, 1, -1), (1, 1, 1, -1), (-1, -1, -1, 1), (1, 1, 1, -1), (1, 1, 1, -1), (1, 1, 1, -1), (-1, -1, -1, 1), (1, 1, 1, -1), (1, 1, 1, -1), (-1, -1, -1, 1), (-1, -1, -1, 1), (1, 1, 1, -1), (1, 1, 1, -1), (1, 1, 1, -1), (-1, -1, -1, 1), (1, 1, 1, -1), (-1, -1, -1, 1), (-1, -1, -1, 1), (-1, -1, -1, 1), (1, 1, 1, -1), (-1, -1, -1, 1), (1, 1, 1, -1), (-1, -1, -1, 1), (-1, -1, -1, 1), (1, 1, 1, -1), (-1, -1, -1, 1), (-1, -1, -1, 1), (1, 1, 1, -1), (1, 1, 1, -1), (1, 1, 1, -1), (1, 1, 1, -1), (1, 1, 1, -1), (-1, -1, -1, 1), (-1, -1, -1, 1), (1, 1, 1, -1), (1, 1, 1, -1), (-1, -1, -1, 1), (-1, -1, -1, 1), (1, 1, 1, -1), (-1, -1, -1, 1), (1, 1, 1, -1), (-1, -1, -1, 1), (1, 1, 1, -1), (1, 1, 1, -1), (-1, -1, -1, 1), (-1, -1, -1, 1), (-1, -1, -1, 1), (1, 1, 1, -1), (1, 1, 1, -1), (-1, -1, -1, 1), (-1, -1, -1, 1), (-1, -1, -1, 1), (-1, -1, -1, 1), (1, 1, 1, -1), (-1, -1, -1, 1), (-1, -1, -1, 1), (1, 1, 1, -1), (-1, -1, -1, 1), (1, 1, 1, -1), (1, 1, 1, -1), (1, 1, 1, -1), (1, 1, 1, -1), (-1, -1, -1, 1), (1, 1, 1, -1), (-1, -1, -1, 1), (1, 1, 1, -1), (-1, -1, -1, 1), (1, 1, 1, -1), (-1, -1, -1, 1), (-1, -1, -1, 1), (-1, -1, -1, 1), (-1, -1, -1, 1), (-1, -1, -1, 1), (1, 1, 1, -1), (-1, -1, -1, 1), (1, 1, 1, -1), (1, 1, 1, -1), (-1, -1, -1, 1), (1, 1, 1, -1), (-1, -1, -1, 1), (1, 1, 1, -1), (1, 1, 1, -1), (1, 1, 1, -1), (-1, -1, -1, 1), (-1, -1, -1, 1), (1, 1, 1, -1), (-1, -1, -1, 1), (-1, -1, -1, 1), (-1, -1, -1, 1), (1, 1, 1, -1), (1, 1, 1, -1), (1, 1, 1, -1), (-1, -1, -1, 1), (-1, -1, -1, 1), (-1, -1, -1, 1), (-1, -1, -1, 1), (-1, -1, -1, 1), (-1, -1, -1, 1), (-1, -1, -1, 1))
-        self.pilot_carriers = pilot_carriers = ((-21, -7, 7, 21), )
-        self.payload_mod = payload_mod = digital.constellation_qpsk()
-        self.occupied_carriers = occupied_carriers = (list(range(-26, -21)) + list(range(-20, -7)) + list(range(-6, 0)) + list(range(1, 7)) + list(range(8, 21)) +list( range(22, 27)),)
-        self.length_tag_key = length_tag_key = "packet_len"
-        self.header_syms = header_syms = 1
-        self.header_mod = header_mod = digital.constellation_bpsk()
-        self.frame_length_tag_key = frame_length_tag_key = "frame_len"
         self.fft_len = fft_len = 64
         self.tx_freq = tx_freq = 0.9e9
         self.tun_gain = tun_gain = 70
-        self.sync_word2 = sync_word2 = sync_word[2]
-        self.sync_word1 = sync_word1 = sync_word[0]
-        self.sync_length = sync_length = 320
+        self.sync_word = sync_word = ((0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, (1.4719601443879746+1.4719601443879746j), 0.0, 0.0, 0.0, (-1.4719601443879746-1.4719601443879746j), 0.0, 0.0, 0.0, (1.4719601443879746+1.4719601443879746j), 0.0, 0.0, 0.0, (-1.4719601443879746-1.4719601443879746j), 0.0, 0.0, 0.0, (-1.4719601443879746-1.4719601443879746j), 0.0, 0.0, 0.0, (1.4719601443879746+1.4719601443879746j), 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, (-1.4719601443879746-1.4719601443879746j), 0.0, 0.0, 0.0, (-1.4719601443879746-1.4719601443879746j), 0.0, 0.0, 0.0, (1.4719601443879746+1.4719601443879746j), 0.0, 0.0, 0.0, (1.4719601443879746+1.4719601443879746j), 0.0, 0.0, 0.0, (1.4719601443879746+1.4719601443879746j), 0.0, 0.0, 0.0, (1.4719601443879746+1.4719601443879746j), 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0), (0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, (1.4719601443879746+1.4719601443879746j), 0.0, 0.0, 0.0, (-1.4719601443879746-1.4719601443879746j), 0.0, 0.0, 0.0, (1.4719601443879746+1.4719601443879746j), 0.0, 0.0, 0.0, (-1.4719601443879746-1.4719601443879746j), 0.0, 0.0, 0.0, (-1.4719601443879746-1.4719601443879746j), 0.0, 0.0, 0.0, (1.4719601443879746+1.4719601443879746j), 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, (-1.4719601443879746-1.4719601443879746j), 0.0, 0.0, 0.0, (-1.4719601443879746-1.4719601443879746j), 0.0, 0.0, 0.0, (1.4719601443879746+1.4719601443879746j), 0.0, 0.0, 0.0, (1.4719601443879746+1.4719601443879746j), 0.0, 0.0, 0.0, (1.4719601443879746+1.4719601443879746j), 0.0, 0.0, 0.0, (1.4719601443879746+1.4719601443879746j), 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0), (0, 0j, 0, 0j, 0, 0j, -1, 1j, -1, 1j, -1, 1j, -1, -1j, 1, 1j, 1, -1j, -1, 1j, 1, 1j, 1, 1j, 1, 1j, -1, (-0-1j), 1, -1j, -1, 1j, 0, -1j, 1, (-0-1j), 1, -1j, 1, 1j, -1, -1j, 1, (-0-1j), -1, 1j, 1, 1j, 1, 1j, 1, 1j, -1, -1j, 1, 1j, 1, -1j, -1, 0j, 0, 0j, 0, 0j), (0, 0, 0, 0, 0, 0, 1, 1, -1, -1, 1, 1, -1, 1, -1, 1, 1, 1, 1, 1, 1, -1, -1, 1, 1, -1, 1, -1, 1, 1, 1, 1, 0, 1, -1, -1, 1, 1, -1, 1, -1, 1, -1, -1, -1, -1, -1, 1, 1, -1, -1, 1, -1, 1, -1, 1, 1, 1, 1, 0, 0, 0, 0, 0))
         self.samp_rate = samp_rate = int(0.2e6)
         self.rx_gain = rx_gain = 10
         self.rolloff = rolloff = 0
-        self.pilot_symbols_old = pilot_symbols_old = ((1, 1, 1, -1,),)
-        self.payload_equalizer = payload_equalizer = digital.ofdm_equalizer_static(fft_len, occupied_carriers, pilot_carriers, pilot_symbols, 1)
+        self.pilot_symbols = pilot_symbols = ((1, 1, 1, -1), (1, 1, 1, -1), (1, 1, 1, -1), (1, 1, 1, -1), (-1, -1, -1, 1), (-1, -1, -1, 1), (-1, -1, -1, 1), (1, 1, 1, -1), (-1, -1, -1, 1), (-1, -1, -1, 1), (-1, -1, -1, 1), (-1, -1, -1, 1), (1, 1, 1, -1), (1, 1, 1, -1), (-1, -1, -1, 1), (1, 1, 1, -1), (-1, -1, -1, 1), (-1, -1, -1, 1), (1, 1, 1, -1), (1, 1, 1, -1), (-1, -1, -1, 1), (1, 1, 1, -1), (1, 1, 1, -1), (-1, -1, -1, 1), (1, 1, 1, -1), (1, 1, 1, -1), (1, 1, 1, -1), (1, 1, 1, -1), (1, 1, 1, -1), (1, 1, 1, -1), (-1, -1, -1, 1), (1, 1, 1, -1), (1, 1, 1, -1), (1, 1, 1, -1), (-1, -1, -1, 1), (1, 1, 1, -1), (1, 1, 1, -1), (-1, -1, -1, 1), (-1, -1, -1, 1), (1, 1, 1, -1), (1, 1, 1, -1), (1, 1, 1, -1), (-1, -1, -1, 1), (1, 1, 1, -1), (-1, -1, -1, 1), (-1, -1, -1, 1), (-1, -1, -1, 1), (1, 1, 1, -1), (-1, -1, -1, 1), (1, 1, 1, -1), (-1, -1, -1, 1), (-1, -1, -1, 1), (1, 1, 1, -1), (-1, -1, -1, 1), (-1, -1, -1, 1), (1, 1, 1, -1), (1, 1, 1, -1), (1, 1, 1, -1), (1, 1, 1, -1), (1, 1, 1, -1), (-1, -1, -1, 1), (-1, -1, -1, 1), (1, 1, 1, -1), (1, 1, 1, -1), (-1, -1, -1, 1), (-1, -1, -1, 1), (1, 1, 1, -1), (-1, -1, -1, 1), (1, 1, 1, -1), (-1, -1, -1, 1), (1, 1, 1, -1), (1, 1, 1, -1), (-1, -1, -1, 1), (-1, -1, -1, 1), (-1, -1, -1, 1), (1, 1, 1, -1), (1, 1, 1, -1), (-1, -1, -1, 1), (-1, -1, -1, 1), (-1, -1, -1, 1), (-1, -1, -1, 1), (1, 1, 1, -1), (-1, -1, -1, 1), (-1, -1, -1, 1), (1, 1, 1, -1), (-1, -1, -1, 1), (1, 1, 1, -1), (1, 1, 1, -1), (1, 1, 1, -1), (1, 1, 1, -1), (-1, -1, -1, 1), (1, 1, 1, -1), (-1, -1, -1, 1), (1, 1, 1, -1), (-1, -1, -1, 1), (1, 1, 1, -1), (-1, -1, -1, 1), (-1, -1, -1, 1), (-1, -1, -1, 1), (-1, -1, -1, 1), (-1, -1, -1, 1), (1, 1, 1, -1), (-1, -1, -1, 1), (1, 1, 1, -1), (1, 1, 1, -1), (-1, -1, -1, 1), (1, 1, 1, -1), (-1, -1, -1, 1), (1, 1, 1, -1), (1, 1, 1, -1), (1, 1, 1, -1), (-1, -1, -1, 1), (-1, -1, -1, 1), (1, 1, 1, -1), (-1, -1, -1, 1), (-1, -1, -1, 1), (-1, -1, -1, 1), (1, 1, 1, -1), (1, 1, 1, -1), (1, 1, 1, -1), (-1, -1, -1, 1), (-1, -1, -1, 1), (-1, -1, -1, 1), (-1, -1, -1, 1), (-1, -1, -1, 1), (-1, -1, -1, 1), (-1, -1, -1, 1))
+        self.pilot_carriers = pilot_carriers = ((-21, -7, 7, 21), )
+        self.payload_mod = payload_mod = digital.constellation_qpsk()
         self.packet_len = packet_len = 288
+        self.occupied_carriers = occupied_carriers = (list(range(-26, -21)) + list(range(-20, -7)) + list(range(-6, 0)) + list(range(1, 7)) + list(range(8, 21)) +list( range(22, 27)),)
         self.max_symbols = max_symbols = int(5 + 1 + ((16 + 800 * 8 + 6) * 2) / 24)
-        self.header_formatter = header_formatter = deepwive_packet_header(occupied_carriers, n_syms=header_syms, len_tag_key=length_tag_key, frame_len_tag_key=frame_length_tag_key, bits_per_header_sym=1, bits_per_payload_sym=payload_mod.bits_per_symbol(), scramble_header=False)
-        self.header_equalizer = header_equalizer = digital.ofdm_equalizer_simpledfe(fft_len, header_mod.base(), occupied_carriers, pilot_carriers, pilot_symbols)
+        self.length_tag_key = length_tag_key = "packet_len"
+        self.frame_length_tag_key = frame_length_tag_key = "frame_len"
         self.cp_len = cp_len = fft_len // 4
 
         ##################################################
@@ -670,14 +660,18 @@ class deepwive_tx_ofdm_custom(gr.top_block, Qt.QWidget):
         self.fft_vxx_0_1 = fft.fft_vcc(fft_len, True, (), True, 1)
         self.fft_vxx_0 = fft.fft_vcc(fft_len, False, (), True, 1)
         self.digital_ofdm_cyclic_prefixer_0 = digital.ofdm_cyclic_prefixer(fft_len, fft_len + cp_len, rolloff, length_tag_key)
-        self.digital_ofdm_carrier_allocator_cvc_0_0_0 = digital.ofdm_carrier_allocator_cvc( 64, (list(range(-26, -21)) + list(range(-20, -7)) + list(range(-6, 0)) + list(range(1, 7)) + list(range(8, 21)) +list( range(22, 27)),), ((-21, -7, 7, 21), ), ((1, 1, 1, -1), (1, 1, 1, -1), (1, 1, 1, -1), (1, 1, 1, -1), (-1, -1, -1, 1), (-1, -1, -1, 1), (-1, -1, -1, 1), (1, 1, 1, -1), (-1, -1, -1, 1), (-1, -1, -1, 1), (-1, -1, -1, 1), (-1, -1, -1, 1), (1, 1, 1, -1), (1, 1, 1, -1), (-1, -1, -1, 1), (1, 1, 1, -1), (-1, -1, -1, 1), (-1, -1, -1, 1), (1, 1, 1, -1), (1, 1, 1, -1), (-1, -1, -1, 1), (1, 1, 1, -1), (1, 1, 1, -1), (-1, -1, -1, 1), (1, 1, 1, -1), (1, 1, 1, -1), (1, 1, 1, -1), (1, 1, 1, -1), (1, 1, 1, -1), (1, 1, 1, -1), (-1, -1, -1, 1), (1, 1, 1, -1), (1, 1, 1, -1), (1, 1, 1, -1), (-1, -1, -1, 1), (1, 1, 1, -1), (1, 1, 1, -1), (-1, -1, -1, 1), (-1, -1, -1, 1), (1, 1, 1, -1), (1, 1, 1, -1), (1, 1, 1, -1), (-1, -1, -1, 1), (1, 1, 1, -1), (-1, -1, -1, 1), (-1, -1, -1, 1), (-1, -1, -1, 1), (1, 1, 1, -1), (-1, -1, -1, 1), (1, 1, 1, -1), (-1, -1, -1, 1), (-1, -1, -1, 1), (1, 1, 1, -1), (-1, -1, -1, 1), (-1, -1, -1, 1), (1, 1, 1, -1), (1, 1, 1, -1), (1, 1, 1, -1), (1, 1, 1, -1), (1, 1, 1, -1), (-1, -1, -1, 1), (-1, -1, -1, 1), (1, 1, 1, -1), (1, 1, 1, -1), (-1, -1, -1, 1), (-1, -1, -1, 1), (1, 1, 1, -1), (-1, -1, -1, 1), (1, 1, 1, -1), (-1, -1, -1, 1), (1, 1, 1, -1), (1, 1, 1, -1), (-1, -1, -1, 1), (-1, -1, -1, 1), (-1, -1, -1, 1), (1, 1, 1, -1), (1, 1, 1, -1), (-1, -1, -1, 1), (-1, -1, -1, 1), (-1, -1, -1, 1), (-1, -1, -1, 1), (1, 1, 1, -1), (-1, -1, -1, 1), (-1, -1, -1, 1), (1, 1, 1, -1), (-1, -1, -1, 1), (1, 1, 1, -1), (1, 1, 1, -1), (1, 1, 1, -1), (1, 1, 1, -1), (-1, -1, -1, 1), (1, 1, 1, -1), (-1, -1, -1, 1), (1, 1, 1, -1), (-1, -1, -1, 1), (1, 1, 1, -1), (-1, -1, -1, 1), (-1, -1, -1, 1), (-1, -1, -1, 1), (-1, -1, -1, 1), (-1, -1, -1, 1), (1, 1, 1, -1), (-1, -1, -1, 1), (1, 1, 1, -1), (1, 1, 1, -1), (-1, -1, -1, 1), (1, 1, 1, -1), (-1, -1, -1, 1), (1, 1, 1, -1), (1, 1, 1, -1), (1, 1, 1, -1), (-1, -1, -1, 1), (-1, -1, -1, 1), (1, 1, 1, -1), (-1, -1, -1, 1), (-1, -1, -1, 1), (-1, -1, -1, 1), (1, 1, 1, -1), (1, 1, 1, -1), (1, 1, 1, -1), (-1, -1, -1, 1), (-1, -1, -1, 1), (-1, -1, -1, 1), (-1, -1, -1, 1), (-1, -1, -1, 1), (-1, -1, -1, 1), (-1, -1, -1, 1)), ((0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, (1.4719601443879746+1.4719601443879746j), 0.0, 0.0, 0.0, (-1.4719601443879746-1.4719601443879746j), 0.0, 0.0, 0.0, (1.4719601443879746+1.4719601443879746j), 0.0, 0.0, 0.0, (-1.4719601443879746-1.4719601443879746j), 0.0, 0.0, 0.0, (-1.4719601443879746-1.4719601443879746j), 0.0, 0.0, 0.0, (1.4719601443879746+1.4719601443879746j), 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, (-1.4719601443879746-1.4719601443879746j), 0.0, 0.0, 0.0, (-1.4719601443879746-1.4719601443879746j), 0.0, 0.0, 0.0, (1.4719601443879746+1.4719601443879746j), 0.0, 0.0, 0.0, (1.4719601443879746+1.4719601443879746j), 0.0, 0.0, 0.0, (1.4719601443879746+1.4719601443879746j), 0.0, 0.0, 0.0, (1.4719601443879746+1.4719601443879746j), 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0), (0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, (1.4719601443879746+1.4719601443879746j), 0.0, 0.0, 0.0, (-1.4719601443879746-1.4719601443879746j), 0.0, 0.0, 0.0, (1.4719601443879746+1.4719601443879746j), 0.0, 0.0, 0.0, (-1.4719601443879746-1.4719601443879746j), 0.0, 0.0, 0.0, (-1.4719601443879746-1.4719601443879746j), 0.0, 0.0, 0.0, (1.4719601443879746+1.4719601443879746j), 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, (-1.4719601443879746-1.4719601443879746j), 0.0, 0.0, 0.0, (-1.4719601443879746-1.4719601443879746j), 0.0, 0.0, 0.0, (1.4719601443879746+1.4719601443879746j), 0.0, 0.0, 0.0, (1.4719601443879746+1.4719601443879746j), 0.0, 0.0, 0.0, (1.4719601443879746+1.4719601443879746j), 0.0, 0.0, 0.0, (1.4719601443879746+1.4719601443879746j), 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0), (0, 0j, 0, 0j, 0, 0j, -1, 1j, -1, 1j, -1, 1j, -1, -1j, 1, 1j, 1, -1j, -1, 1j, 1, 1j, 1, 1j, 1, 1j, -1, (-0-1j), 1, -1j, -1, 1j, 0, -1j, 1, (-0-1j), 1, -1j, 1, 1j, -1, -1j, 1, (-0-1j), -1, 1j, 1, 1j, 1, 1j, 1, 1j, -1, -1j, 1, 1j, 1, -1j, -1, 0j, 0, 0j, 0, 0j), (0, 0, 0, 0, 0, 0, 1, 1, -1, -1, 1, 1, -1, 1, -1, 1, 1, 1, 1, 1, 1, -1, -1, 1, 1, -1, 1, -1, 1, 1, 1, 1, 0, 1, -1, -1, 1, 1, -1, 1, -1, 1, -1, -1, -1, -1, -1, 1, 1, -1, -1, 1, -1, 1, -1, 1, 1, 1, 1, 0, 0, 0, 0, 0)), "packet_len", True)
+        self.digital_ofdm_carrier_allocator_cvc_0_0_0 = digital.ofdm_carrier_allocator_cvc( 64, occupied_carriers, pilot_carriers, pilot_symbols, sync_word, "packet_len", True)
         self.digital_ofdm_carrier_allocator_cvc_0_0_0.set_min_output_buffer(207744)
-        self.deepwive_v1_ofdm_sync_short_0 = deepwive_v1.ofdm_sync_short(0.7, 2, False, False)
-        self.deepwive_v1_ofdm_sync_long_0 = deepwive_v1.ofdm_sync_long(sync_length, False, True)
+        self.deepwive_v1_ofdm_sync_short_0 = deepwive_v1.ofdm_sync_short(0.56, 2, False, False)
+        self.deepwive_v1_ofdm_sync_long_0 = deepwive_v1.ofdm_sync_long(320, False, False)
         self.deepwive_v1_ofdm_frame_equalizer_1 = deepwive_v1.ofdm_frame_equalizer(tx_freq, samp_rate, packet_len, False, False)
         self.deepwive_v1_deepwive_v1_source_1 = deepwive_v1.deepwive_v1_source('/home/tt2114/workspace/gr-deepwive_v1/examples/test_files/v_YoYo_g25_c05.avi', 240,
         '/home/tt2114/workspace/gr-deepwive_v1/examples/test_files/key_encoder.trt', '/home/tt2114/workspace/gr-deepwive_v1/examples/test_files/interp_encoder.trt', '/home/tt2114/workspace/gr-deepwive_v1/examples/test_files/ssf_net.trt', '/home/tt2114/workspace/gr-deepwive_v1/examples/test_files/bw_allocator.trt',
         packet_len, 20., 20, 5, False)
+        self.deepwive_v1_deepwive_v1_sink_0_1 = deepwive_v1.deepwive_v1_sink('/home/tt2114/workspace/gr-deepwive_v1/examples/test_files/v_YoYo_g25_c05.avi', 240,
+        '/home/tt2114/workspace/gr-deepwive_v1/examples/test_files/key_decoder.trt', '/home/tt2114/workspace/gr-deepwive_v1/examples/test_files/interp_decoder.trt',
+        packet_len, 20, 20, 5, 0,
+        False)
         self.blocks_vector_to_stream_1 = blocks.vector_to_stream(gr.sizeof_gr_complex*1, 64)
         self.blocks_vector_to_stream_0_1 = blocks.vector_to_stream(gr.sizeof_gr_complex*1, fft_len)
         self.blocks_vector_to_stream_0 = blocks.vector_to_stream(gr.sizeof_gr_complex*1, fft_len)
@@ -692,7 +686,6 @@ class deepwive_tx_ofdm_custom(gr.top_block, Qt.QWidget):
         self.blocks_moving_average_xx_1 = blocks.moving_average_cc(48, 1, 4000, 1)
         self.blocks_moving_average_xx_0 = blocks.moving_average_ff(48+cp_len, 1, 4000, 1)
         self.blocks_divide_xx_0 = blocks.divide_ff(1)
-        self.blocks_delay_1 = blocks.delay(gr.sizeof_gr_complex*1, sync_length)
         self.blocks_delay_0_0 = blocks.delay(gr.sizeof_gr_complex*1, 16)
         self.blocks_conjugate_cc_0 = blocks.conjugate_cc()
         self.blocks_complex_to_mag_squared_0 = blocks.complex_to_mag_squared(1)
@@ -703,20 +696,17 @@ class deepwive_tx_ofdm_custom(gr.top_block, Qt.QWidget):
         # Connections
         ##################################################
         self.msg_connect((self.deepwive_v1_ofdm_frame_equalizer_1, 'payload_IQ'), (self.blocks_pdu_to_tagged_stream_1, 'pdus'))
+        self.msg_connect((self.deepwive_v1_ofdm_frame_equalizer_1, 'payload_IQ'), (self.deepwive_v1_deepwive_v1_sink_0_1, 'pdu_in'))
         self.connect((self.blocks_complex_to_mag_0, 0), (self.blocks_divide_xx_0, 0))
         self.connect((self.blocks_complex_to_mag_squared_0, 0), (self.blocks_moving_average_xx_0, 0))
         self.connect((self.blocks_conjugate_cc_0, 0), (self.blocks_multiply_xx_0_0, 1))
         self.connect((self.blocks_delay_0_0, 0), (self.blocks_conjugate_cc_0, 0))
         self.connect((self.blocks_delay_0_0, 0), (self.deepwive_v1_ofdm_sync_short_0, 0))
-        self.connect((self.blocks_delay_1, 0), (self.deepwive_v1_ofdm_sync_long_0, 1))
         self.connect((self.blocks_divide_xx_0, 0), (self.deepwive_v1_ofdm_sync_short_0, 2))
         self.connect((self.blocks_divide_xx_0, 0), (self.qtgui_time_sink_x_1, 0))
         self.connect((self.blocks_moving_average_xx_0, 0), (self.blocks_divide_xx_0, 1))
         self.connect((self.blocks_moving_average_xx_1, 0), (self.blocks_complex_to_mag_0, 0))
         self.connect((self.blocks_moving_average_xx_1, 0), (self.deepwive_v1_ofdm_sync_short_0, 1))
-        self.connect((self.blocks_multiply_const_vxx_0, 0), (self.blocks_complex_to_mag_squared_0, 0))
-        self.connect((self.blocks_multiply_const_vxx_0, 0), (self.blocks_delay_0_0, 0))
-        self.connect((self.blocks_multiply_const_vxx_0, 0), (self.blocks_multiply_xx_0_0, 0))
         self.connect((self.blocks_multiply_const_vxx_0, 0), (self.blocks_tag_gate_0, 0))
         self.connect((self.blocks_multiply_xx_0_0, 0), (self.blocks_moving_average_xx_1, 0))
         self.connect((self.blocks_pdu_to_tagged_stream_1, 0), (self.qtgui_time_sink_x_2_0_0_0_3, 0))
@@ -733,13 +723,15 @@ class deepwive_tx_ofdm_custom(gr.top_block, Qt.QWidget):
         self.connect((self.deepwive_v1_deepwive_v1_source_1, 0), (self.qtgui_const_sink_x_1, 0))
         self.connect((self.deepwive_v1_ofdm_sync_long_0, 0), (self.blocks_stream_to_vector_0, 0))
         self.connect((self.deepwive_v1_ofdm_sync_long_0, 0), (self.qtgui_time_sink_x_2_0_0_0, 0))
-        self.connect((self.deepwive_v1_ofdm_sync_short_0, 0), (self.blocks_delay_1, 0))
         self.connect((self.deepwive_v1_ofdm_sync_short_0, 0), (self.blocks_stream_to_vector_0_0, 0))
         self.connect((self.deepwive_v1_ofdm_sync_short_0, 0), (self.deepwive_v1_ofdm_sync_long_0, 0))
         self.connect((self.deepwive_v1_ofdm_sync_short_0, 0), (self.qtgui_time_sink_x_2_0, 0))
         self.connect((self.digital_ofdm_carrier_allocator_cvc_0_0_0, 0), (self.blocks_vector_to_stream_1, 0))
         self.connect((self.digital_ofdm_carrier_allocator_cvc_0_0_0, 0), (self.fft_vxx_0, 0))
+        self.connect((self.digital_ofdm_cyclic_prefixer_0, 0), (self.blocks_complex_to_mag_squared_0, 0))
+        self.connect((self.digital_ofdm_cyclic_prefixer_0, 0), (self.blocks_delay_0_0, 0))
         self.connect((self.digital_ofdm_cyclic_prefixer_0, 0), (self.blocks_multiply_const_vxx_0, 0))
+        self.connect((self.digital_ofdm_cyclic_prefixer_0, 0), (self.blocks_multiply_xx_0_0, 0))
         self.connect((self.fft_vxx_0, 0), (self.digital_ofdm_cyclic_prefixer_0, 0))
         self.connect((self.fft_vxx_0_1, 0), (self.blocks_vector_to_stream_0, 0))
         self.connect((self.fft_vxx_0_1, 0), (self.deepwive_v1_ofdm_frame_equalizer_1, 0))
@@ -752,80 +744,12 @@ class deepwive_tx_ofdm_custom(gr.top_block, Qt.QWidget):
         self.settings.setValue("geometry", self.saveGeometry())
         event.accept()
 
-    def get_sync_word(self):
-        return self.sync_word
-
-    def set_sync_word(self, sync_word):
-        self.sync_word = sync_word
-        self.set_sync_word1(self.sync_word[0])
-        self.set_sync_word2(self.sync_word[2])
-
-    def get_pilot_symbols(self):
-        return self.pilot_symbols
-
-    def set_pilot_symbols(self, pilot_symbols):
-        self.pilot_symbols = pilot_symbols
-        self.set_header_equalizer(digital.ofdm_equalizer_simpledfe(self.fft_len, header_mod.base(), self.occupied_carriers, self.pilot_carriers, self.pilot_symbols))
-        self.set_payload_equalizer(digital.ofdm_equalizer_static(self.fft_len, self.occupied_carriers, self.pilot_carriers, self.pilot_symbols, 1))
-
-    def get_pilot_carriers(self):
-        return self.pilot_carriers
-
-    def set_pilot_carriers(self, pilot_carriers):
-        self.pilot_carriers = pilot_carriers
-        self.set_header_equalizer(digital.ofdm_equalizer_simpledfe(self.fft_len, header_mod.base(), self.occupied_carriers, self.pilot_carriers, self.pilot_symbols))
-        self.set_payload_equalizer(digital.ofdm_equalizer_static(self.fft_len, self.occupied_carriers, self.pilot_carriers, self.pilot_symbols, 1))
-
-    def get_payload_mod(self):
-        return self.payload_mod
-
-    def set_payload_mod(self, payload_mod):
-        self.payload_mod = payload_mod
-
-    def get_occupied_carriers(self):
-        return self.occupied_carriers
-
-    def set_occupied_carriers(self, occupied_carriers):
-        self.occupied_carriers = occupied_carriers
-        self.set_header_equalizer(digital.ofdm_equalizer_simpledfe(self.fft_len, header_mod.base(), self.occupied_carriers, self.pilot_carriers, self.pilot_symbols))
-        self.set_header_formatter(deepwive_packet_header(self.occupied_carriers, n_syms=self.header_syms, len_tag_key=self.length_tag_key, frame_len_tag_key=self.frame_length_tag_key, bits_per_header_sym=1, bits_per_payload_sym=payload_mod.bits_per_symbol(), scramble_header=False))
-        self.set_payload_equalizer(digital.ofdm_equalizer_static(self.fft_len, self.occupied_carriers, self.pilot_carriers, self.pilot_symbols, 1))
-
-    def get_length_tag_key(self):
-        return self.length_tag_key
-
-    def set_length_tag_key(self, length_tag_key):
-        self.length_tag_key = length_tag_key
-        self.set_header_formatter(deepwive_packet_header(self.occupied_carriers, n_syms=self.header_syms, len_tag_key=self.length_tag_key, frame_len_tag_key=self.frame_length_tag_key, bits_per_header_sym=1, bits_per_payload_sym=payload_mod.bits_per_symbol(), scramble_header=False))
-
-    def get_header_syms(self):
-        return self.header_syms
-
-    def set_header_syms(self, header_syms):
-        self.header_syms = header_syms
-        self.set_header_formatter(deepwive_packet_header(self.occupied_carriers, n_syms=self.header_syms, len_tag_key=self.length_tag_key, frame_len_tag_key=self.frame_length_tag_key, bits_per_header_sym=1, bits_per_payload_sym=payload_mod.bits_per_symbol(), scramble_header=False))
-
-    def get_header_mod(self):
-        return self.header_mod
-
-    def set_header_mod(self, header_mod):
-        self.header_mod = header_mod
-
-    def get_frame_length_tag_key(self):
-        return self.frame_length_tag_key
-
-    def set_frame_length_tag_key(self, frame_length_tag_key):
-        self.frame_length_tag_key = frame_length_tag_key
-        self.set_header_formatter(deepwive_packet_header(self.occupied_carriers, n_syms=self.header_syms, len_tag_key=self.length_tag_key, frame_len_tag_key=self.frame_length_tag_key, bits_per_header_sym=1, bits_per_payload_sym=payload_mod.bits_per_symbol(), scramble_header=False))
-
     def get_fft_len(self):
         return self.fft_len
 
     def set_fft_len(self, fft_len):
         self.fft_len = fft_len
         self.set_cp_len(self.fft_len // 4)
-        self.set_header_equalizer(digital.ofdm_equalizer_simpledfe(self.fft_len, header_mod.base(), self.occupied_carriers, self.pilot_carriers, self.pilot_symbols))
-        self.set_payload_equalizer(digital.ofdm_equalizer_static(self.fft_len, self.occupied_carriers, self.pilot_carriers, self.pilot_symbols, 1))
 
     def get_tx_freq(self):
         return self.tx_freq
@@ -843,24 +767,11 @@ class deepwive_tx_ofdm_custom(gr.top_block, Qt.QWidget):
         self.limesdr_sink_0.set_gain(self.tun_gain, 0)
         self.limesdr_sink_0.set_gain(self.tun_gain, 1)
 
-    def get_sync_word2(self):
-        return self.sync_word2
+    def get_sync_word(self):
+        return self.sync_word
 
-    def set_sync_word2(self, sync_word2):
-        self.sync_word2 = sync_word2
-
-    def get_sync_word1(self):
-        return self.sync_word1
-
-    def set_sync_word1(self, sync_word1):
-        self.sync_word1 = sync_word1
-
-    def get_sync_length(self):
-        return self.sync_length
-
-    def set_sync_length(self, sync_length):
-        self.sync_length = sync_length
-        self.blocks_delay_1.set_dly(self.sync_length)
+    def set_sync_word(self, sync_word):
+        self.sync_word = sync_word
 
     def get_samp_rate(self):
         return self.samp_rate
@@ -896,17 +807,23 @@ class deepwive_tx_ofdm_custom(gr.top_block, Qt.QWidget):
     def set_rolloff(self, rolloff):
         self.rolloff = rolloff
 
-    def get_pilot_symbols_old(self):
-        return self.pilot_symbols_old
+    def get_pilot_symbols(self):
+        return self.pilot_symbols
 
-    def set_pilot_symbols_old(self, pilot_symbols_old):
-        self.pilot_symbols_old = pilot_symbols_old
+    def set_pilot_symbols(self, pilot_symbols):
+        self.pilot_symbols = pilot_symbols
 
-    def get_payload_equalizer(self):
-        return self.payload_equalizer
+    def get_pilot_carriers(self):
+        return self.pilot_carriers
 
-    def set_payload_equalizer(self, payload_equalizer):
-        self.payload_equalizer = payload_equalizer
+    def set_pilot_carriers(self, pilot_carriers):
+        self.pilot_carriers = pilot_carriers
+
+    def get_payload_mod(self):
+        return self.payload_mod
+
+    def set_payload_mod(self, payload_mod):
+        self.payload_mod = payload_mod
 
     def get_packet_len(self):
         return self.packet_len
@@ -916,23 +833,29 @@ class deepwive_tx_ofdm_custom(gr.top_block, Qt.QWidget):
         self.blocks_stream_to_tagged_stream_0.set_packet_len(self.packet_len + 48)
         self.blocks_stream_to_tagged_stream_0.set_packet_len_pmt(self.packet_len + 48)
 
+    def get_occupied_carriers(self):
+        return self.occupied_carriers
+
+    def set_occupied_carriers(self, occupied_carriers):
+        self.occupied_carriers = occupied_carriers
+
     def get_max_symbols(self):
         return self.max_symbols
 
     def set_max_symbols(self, max_symbols):
         self.max_symbols = max_symbols
 
-    def get_header_formatter(self):
-        return self.header_formatter
+    def get_length_tag_key(self):
+        return self.length_tag_key
 
-    def set_header_formatter(self, header_formatter):
-        self.header_formatter = header_formatter
+    def set_length_tag_key(self, length_tag_key):
+        self.length_tag_key = length_tag_key
 
-    def get_header_equalizer(self):
-        return self.header_equalizer
+    def get_frame_length_tag_key(self):
+        return self.frame_length_tag_key
 
-    def set_header_equalizer(self, header_equalizer):
-        self.header_equalizer = header_equalizer
+    def set_frame_length_tag_key(self, frame_length_tag_key):
+        self.frame_length_tag_key = frame_length_tag_key
 
     def get_cp_len(self):
         return self.cp_len

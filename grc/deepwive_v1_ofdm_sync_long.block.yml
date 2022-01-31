@@ -44,10 +44,10 @@ inputs:
 -   domain: stream
     dtype: complex
     multiplicity: '1'
--   label: in delayed
-    domain: stream
-    dtype: complex
-    multiplicity: '1'
+# -   label: in delayed
+#     domain: stream
+#     dtype: complex
+#     multiplicity: '1'
 
 outputs:
 -   domain: stream

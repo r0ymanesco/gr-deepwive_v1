@@ -49,7 +49,7 @@ class ofdm_sync_long_impl : public ofdm_sync_long
                         bool log,
                         bool debug)
       : block("ofdm_sync_long",
-              gr::io_signature::make2(2, 2, sizeof(gr_complex), sizeof(gr_complex)),
+              gr::io_signature::make(1, 1, sizeof(gr_complex)),
               gr::io_signature::make(1, 1, sizeof(gr_complex))),
         d_fir(gr::filter::kernel::fir_filter_ccc(1, LONG)),
         d_log(log),
@@ -73,14 +73,13 @@ class ofdm_sync_long_impl : public ofdm_sync_long
                      gr_vector_void_star& output_items)
     {
       const gr_complex* in = (const gr_complex*)input_items[0];
-      const gr_complex* in_delayed = (const gr_complex*)input_items[1];
       gr_complex* out = (gr_complex*)output_items[0];
       // float* corr = (float*)output_items[1];
 
-      dout << "LONG ninput[0] " << ninput_items[0] << " ninput[1]" << ninput_items[1]
+      dout << "LONG ninput[0] " << ninput_items[0]
         << " noutput " << noutput << " state " << d_state << std::endl;
 
-      int ninput = std::min(std::min(ninput_items[0], ninput_items[1]), 8192);
+      int ninput = std::min(ninput_items[0], 8192);
       const uint64_t nread = nitems_read(0);
       get_tags_in_range(d_tags, 0, nread, nread + ninput);
       dout << "nread " << nread << std::endl;
@@ -90,11 +89,9 @@ class ofdm_sync_long_impl : public ofdm_sync_long
 
         const uint64_t offset = d_tags.front().offset;
         dout << "offset " << offset << std::endl;
-        // what does it mean when offset == nread?
 
         if (offset > nread){
           ninput = offset - nread;
-          // ninput = offset - nread + (SYNC_LENGTH - d_frame_start);
           dout << "copy ninput " << ninput << std::endl;
         }
         else {
@@ -103,8 +100,6 @@ class ofdm_sync_long_impl : public ofdm_sync_long
           }
           if (d_state == COPY){
             dout << "goto reset" << std::endl;
-            // dout << "reset condition met" << std::endl;
-            // ninput = SYNC_LENGTH - d_frame_start;
             d_state = RESET;
           }
           d_freq_offset_short = pmt::to_double(d_tags.front().value);
@@ -116,12 +111,6 @@ class ofdm_sync_long_impl : public ofdm_sync_long
 
       int i = 0;
       int o = 0;
-
-      /*!
-       * FIXME the problem has to do with values being forgotten
-       * as the ninput is computed wrt input 0 but values are
-       * obtained from input 1 (delayed)
-       */
 
       switch (d_state) {
 
@@ -140,7 +129,8 @@ class ofdm_sync_long_impl : public ofdm_sync_long
               search_frame_start();
               // mylog(boost::format("LONG: frame start at %1%") % d_frame_start);
               dout << "LONG: frame start at " << d_frame_start << std::endl;
-              d_offset = 0;
+              d_remainder = SYNC_LENGTH - d_frame_start;
+              d_offset = d_frame_start;
               d_count = 0;
               d_state = COPY;
               // for (int k = 0; k < 64; k++){
@@ -151,15 +141,13 @@ class ofdm_sync_long_impl : public ofdm_sync_long
             }
           }
 
-          dout << "produced : " << o << " consumed: " << i << std::endl;
+          dout << "produced: " << o << " consumed: " << d_frame_start << std::endl;
 
-          consume(0, i);
-          consume(1, i);
+          consume(0, d_frame_start);
           return o;
         }
 
         case COPY: {
-          // dout << "copying" << std::endl;
           while (i < ninput && o < noutput){
             int rel = d_offset - d_frame_start;
 
@@ -172,8 +160,7 @@ class ofdm_sync_long_impl : public ofdm_sync_long
             }
 
             if (rel >= 0 && (rel < 128 || ((rel - 128) % 80) > 15)){
-              // dout << "rel " << rel << " delayed i " << i << std::endl;
-              out[o] = in_delayed[i] * exp(gr_complex(0, d_offset * d_freq_offset));
+              out[o] = in[i] * exp(gr_complex(0, d_offset * d_freq_offset));
               o++;
               d_count++;
             }
@@ -182,36 +169,19 @@ class ofdm_sync_long_impl : public ofdm_sync_long
             d_offset++;
           }
 
-          dout << "produced : " << o << " consumed: " << i << std::endl;
+          dout << "produced: " << o << " consumed: " << i << std::endl;
 
           consume(0, i);
-          consume(1, i);
           return o;
         }
 
         case RESET: {
-          dout << "reset ninput " << ninput << std::endl;
           while (o < noutput){
-            // if (d_count % 64 == 0 && d_count >= n_frames_max){
-            if (d_count % 64 == 0){
+            if ((d_count % 64) == 0){
               d_offset = 0;
               d_state = SYNC;
               break;
             }
-            // else if (d_count < n_frames_max) {
-            //   int rel = d_offset - d_frame_start;
-            //   // dout << "reset copying" << std::endl;
-
-            //   if (rel >= 0 && (rel < 128 || ((rel - 128) % 80) > 15)){
-            //     out[o] = in_delayed[i] * exp(gr_complex(0, d_offset * d_freq_offset));
-            //     o++;
-            //     d_count++;
-
-            //   }
-
-            //   i++;
-            //   d_offset++;
-            // }
             else{
               out[o] = 0;
               o++;
@@ -219,10 +189,9 @@ class ofdm_sync_long_impl : public ofdm_sync_long
             }
           }
 
-          dout << "produced : " << o << " consumed: " << i << std::endl;
+          dout << "produced: " << o << " consumed: " << i << std::endl;
 
-          // consume(0, i);
-          // consume(1, i);
+          consume(0, 0);
           return o;
         }
       }
@@ -233,17 +202,14 @@ class ofdm_sync_long_impl : public ofdm_sync_long
 
     void forecast(int noutput_items, gr_vector_int& ninput_items_required)
     {
-      // in sync state we need at least a symbol to correlate with the pattern
-      ninput_items_required[0] = std::max(n_frames_max, std::max(SYNC_LENGTH, noutput_items));
-      ninput_items_required[1] = std::max(n_frames_max, std::max(SYNC_LENGTH, noutput_items));
+      // ninput_items_required[0] = std::max(SYNC_LENGTH, noutput_items);
 
-      // if (d_state == SYNC){
-      //   ninput_items_required[0] = SYNC_LENGTH;
-      //   ninput_items_required[1] = SYNC_LENGTH;
-      // }else{
-      //   ninput_items_required[0] = noutput_items;
-      //   ninput_items_required[1] = noutput_items;
-      // }
+      // in sync state we need at least a symbol to correlate with the pattern
+      if (d_state == SYNC){
+        ninput_items_required[0] = SYNC_LENGTH;
+      }else{
+        ninput_items_required[0] = noutput_items;
+      }
     }
 
     void search_frame_start()
@@ -272,10 +238,10 @@ class ofdm_sync_long_impl : public ofdm_sync_long
                     second = get<0>(vec[k]);
                 }
                 int diff = abs(get<1>(vec[i]) - get<1>(vec[k]));
+                dout << "sync diff " << diff << endl;
                 if (diff == 64) {
                     d_frame_start = min(get<1>(vec[i]), get<1>(vec[k]));
                     d_freq_offset = arg(first * conj(second)) / 64;
-                    // nice match found, return immediately
                     dout << "found nice match" << std::endl;
                     return;
 
@@ -288,6 +254,7 @@ class ofdm_sync_long_impl : public ofdm_sync_long
                 }
             }
         }
+
     }
 
   private:
@@ -297,8 +264,7 @@ class ofdm_sync_long_impl : public ofdm_sync_long
     int d_frame_start;
     float d_freq_offset;
     double d_freq_offset_short;
-    unsigned int d_packet_len = 288;
-    const int n_frames_max = 64 * (3 + (d_packet_len / 48));
+    int d_remainder;
 
     gr_complex* d_correlation;
     list<pair<gr_complex, int>> d_cor;

@@ -602,7 +602,7 @@ class deepwive_v1_source(gr.sync_block):
                     codeword = codeword.reshape(-1, 2)
                     codeword = np.concatenate((codeword.reshape(-1, 2), np.zeros((self.n_padding, 2))), axis=0)
                     first = 1.
-                    curr_bw_allocation = 0
+                    curr_bw_allocation = None
                 else:
                     curr_gop = self.video_frames[self.gop_idx*(self.gop_size-1)
                                                  :(self.gop_idx+1)*(self.gop_size-1)+1]
@@ -610,8 +610,7 @@ class deepwive_v1_source(gr.sync_block):
                     codeword = np.concatenate((codeword.reshape(-1, 2), np.zeros((self.n_padding, 2))), axis=0)
                     first = 0.
 
-                self.packets = np.vsplit(codeword, self.n_packets)
-                # print('tx first {}, alloc {}'.format(first, curr_bw_allocation))
+                self.packets = np.vsplit(codeword * 0.1, self.n_packets)
 
                 if first:
                     allocation_bits = [1] * 11
@@ -630,9 +629,11 @@ class deepwive_v1_source(gr.sync_block):
                 #                   pmt.intern('packet_len'), pmt.from_long(self.packet_len + 48))
 
                 self.curr_packet = np.concatenate((self.header_bits, self.packets[self.packet_idx]), axis=0)
+                # print('tx first {}, alloc {}'.format(first, curr_bw_allocation))
 
                 self.packet_idx += 1
                 self.symbol_idx = 0
+                # print(self.packet_idx)
 
             payload_out[payload_idx] = (self.curr_packet[self.symbol_idx, 0]
                                         + self.curr_packet[self.symbol_idx, 1]*1j)

@@ -444,6 +444,7 @@ class deepwive_v1_sink(gr.basic_block):
         elif detect_first or (self.first_received and len(self.curr_frame_packets) == self.n_packets):
             codeword = np.concatenate(self.curr_frame_packets, axis=0)[:self.ch_uses-self.n_padding]
             codeword = np.ascontiguousarray(codeword, dtype=self.target_dtype).reshape(self.codeword_shape)
+            codeword = codeword / 0.1
 
             if detect_first:
                 self._video_reset()
@@ -456,7 +457,7 @@ class deepwive_v1_sink(gr.basic_block):
                     raise Exception
 
                 alloc_idx = self._majority_decode()
-                print('first {} alloc {}'.format(first_flag, alloc_idx))
+                # print('first {} alloc {}'.format(first_flag, alloc_idx))
                 decoded_frames = self._decode_gop(codeword, alloc_idx, init_frame=self.prev_last)
 
             self.prev_last = decoded_frames[-1]

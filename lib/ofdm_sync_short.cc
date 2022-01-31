@@ -48,7 +48,6 @@ public:
           MIN_PLATEAU(min_plateau),
           d_threshold(threshold)
     {
-
         set_tag_propagation_policy(block::TPP_DONT);
     }
 

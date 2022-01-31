@@ -40,7 +40,8 @@ namespace gr {
     }
 
 
-    ofdm_frame_equalizer_impl::ofdm_frame_equalizer_impl(double freq, double bw, int packet_len, bool log, bool debug)
+    ofdm_frame_equalizer_impl::ofdm_frame_equalizer_impl(
+      double freq, double bw, int packet_len, bool log, bool debug)
       : gr::block("ofdm_frame_equalizer",
                   gr::io_signature::make(1, 1, 64*sizeof(gr_complex)),
                   gr::io_signature::make(0, 0, 0)),
@@ -90,8 +91,8 @@ namespace gr {
       gr_complex symbols[48];
       gr_complex current_symbol[64];
 
-      // dout << "FRAME EQUALIZER: input " << ninput_items[0] << "  output " << noutput_items
-      //    << std::endl;
+      dout << "FRAME EQUALIZER: input " << ninput_items[0] << "  output " << noutput_items
+         << std::endl;
 
       while ((i < ninput_items[0]) && (o < noutput_items)){
         get_tags_in_window(tags, 0, i, i+1, pmt::string_to_symbol("data_start"));
@@ -99,25 +100,9 @@ namespace gr {
         //new frame
         if (tags.size()) {
 
-          if (d_current_symbol > 2){
-            pmt::pmt_t dict = pmt::make_dict();
-            dict = pmt::dict_add(
-              dict, pmt::mp("packet_len"), pmt::from_long(d_packet_len));
-            dict = pmt::dict_add(
-              dict, pmt::mp("first_flag"), pmt::from_long(d_first_flag));
-            dict = pmt::dict_add(
-              dict, pmt::mp("alloc_idx"), pmt::from_long(d_alloc_idx));
-            dict = pmt::dict_add(
-              dict, pmt::mp("snr"), pmt::from_double(get_snr()));
-
-            message_port_pub(
-              pmt::mp("payload_IQ"),
-              pmt::cons(dict, pmt::init_c32vector(payload_symbols.size(), payload_symbols)));
-          }
-
+          dout << "new frame" << std::endl;
           dout << "n frames produced " << d_current_symbol << std::endl;
           dout << "n payload symbols produced " << d_payload_symbols << std::endl;
-          dout << "packet len " << d_packet_len << std::endl;
 
           d_current_symbol = 0;
           d_payload_symbols = 0;
@@ -129,7 +114,7 @@ namespace gr {
 
           // dout << "epsilon: " << d_epsilon0 << std::endl;
         }
-        else if (d_payload_symbols >= d_packet_len) {
+        else if (d_payload_symbols > d_packet_len) {
           dout << "not interesting; skip" << std::endl;
           i++;
           continue;
@@ -222,8 +207,24 @@ namespace gr {
           for (int i = 0; i < 48; i++) {
             payload_symbols.push_back(symbols[i]);
           }
-          o++;
+          // o++;
           d_payload_symbols += 48;
+        }
+
+        if (d_payload_symbols == d_packet_len){
+          pmt::pmt_t dict = pmt::make_dict();
+          dict = pmt::dict_add(
+            dict, pmt::mp("packet_len"), pmt::from_long(d_packet_len));
+          dict = pmt::dict_add(
+            dict, pmt::mp("first_flag"), pmt::from_long(d_first_flag));
+          dict = pmt::dict_add(
+            dict, pmt::mp("alloc_idx"), pmt::from_long(d_alloc_idx));
+          dict = pmt::dict_add(
+            dict, pmt::mp("snr"), pmt::from_double(get_snr()));
+
+          message_port_pub(
+            pmt::mp("payload_IQ"),
+            pmt::cons(dict, pmt::init_c32vector(payload_symbols.size(), payload_symbols)));
         }
 
         i++;
@@ -231,7 +232,7 @@ namespace gr {
 
       }
 
-      // dout << "produced " << o << " consumed " << i << std::endl;
+      dout << "consumed " << i << std::endl;
 
       consume(0, i);
       return o;
@@ -239,11 +240,11 @@ namespace gr {
 
     void ofdm_frame_equalizer_impl::extract_from_header(uint8_t* bits)
     {
+      // TODO switch to convolutional coding
       dout << "header bits" << std::endl;
       for (int i = 0; i < 48; i++){
         dout << (int)bits[i];
       }
-      // TODO switch to convolutional coding
       dout << std::endl;
       std::vector<unsigned> header_first_flag(4);
       std::vector<unsigned> header_alloc_idx(4);
