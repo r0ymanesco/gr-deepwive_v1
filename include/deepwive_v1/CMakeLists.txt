@@ -23,9 +23,6 @@
 ########################################################################
 install(FILES
     api.h
-    soft_equalizer_single_tap.h
-    deepwive_packet_header.h
-    header_format.h
     ofdm_sync_short.h
     ofdm_sync_long.h
     ofdm_frame_equalizer.h DESTINATION include/deepwive_v1

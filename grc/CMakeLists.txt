@@ -20,9 +20,6 @@
 install(FILES
     deepwive_v1_deepwive_v1_source.block.yml
     deepwive_v1_deepwive_v1_sink.block.yml
-    deepwive_v1_soft_equalizer_single_tap.block.yml
-    deepwive_v1_deepwive_packet_header.block.yml
-    deepwive_v1_header_format.block.yml
     deepwive_v1_awgn_channel.block.yml
     deepwive_v1_ofdm_sync_short.block.yml
     deepwive_v1_ofdm_sync_long.block.yml
