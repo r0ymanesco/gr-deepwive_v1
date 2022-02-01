@@ -176,7 +176,8 @@ namespace gr {
 
         // process header
         if (d_current_symbol == 2) {
-          extract_from_header(bits);
+          // extract_from_header(bits);
+          extract_from_header_cc(bits);
 
           // add_item_tag(0,
           //              nitems_written(0) + o,
@@ -238,55 +239,360 @@ namespace gr {
       return o;
     }
 
-    void ofdm_frame_equalizer_impl::extract_from_header(uint8_t* bits)
+    void ofdm_frame_equalizer_impl::extract_from_header_cc(uint8_t* bits)
     {
-      // TODO switch to convolutional coding
-      dout << "header bits" << std::endl;
+      dout << "received header bits" << std::endl;
       for (int i = 0; i < 48; i++){
         dout << (int)bits[i];
       }
       dout << std::endl;
-      std::vector<unsigned> header_first_flag(4);
-      std::vector<unsigned> header_alloc_idx(4);
 
-      int k = 0;
-      for (int i = 0; i < 4; i++) {
-        unsigned first_flag = 0;
-        unsigned alloc_idx = 0;
-        first_flag |= (((unsigned)bits[k]) & 1);
-        header_first_flag[i] = first_flag;
-        k++;
-        while (k % 12 != 0) {
-          alloc_idx |= (((unsigned)bits[k]) & 1) << ((k % 12) - 1);
-          k++;
+      uint8_t* decoded_bits = cc_decode(bits);
+      dout << "cc decoded header" << std::endl;
+
+      d_first_flag = 0;
+      d_alloc_idx = 0;
+      bool parity = false;
+
+      for (int i = 0; i < 12; i++) {
+        dout << (unsigned)decoded_bits[i];
+
+        parity ^= decoded_bits[i];
+
+        if (i == 0) {
+          d_first_flag |= (((unsigned)decoded_bits[i]) & 1);
         }
-        header_alloc_idx[i] = alloc_idx;
+        else {
+          d_alloc_idx |= (((unsigned)decoded_bits[i]) & 1) << (i - 1);
+        }
+
+      }
+      dout << std::endl;
+
+      if (parity != decoded_bits[12]) {
+        throw std::runtime_error("header parity check fail");
+      }
+      else {
+        dout << "header parity check PASS" << std::endl;
+        dout << "first flag " << d_first_flag << " alloc idx " << d_alloc_idx << std::endl;
       }
 
-      if (k > 48){
-        std::runtime_error("header extraction failed");
+    }
+
+    uint8_t* ofdm_frame_equalizer_impl::cc_decode(uint8_t *in)
+    {
+      cc_reset();
+
+      int in_count = 0;
+      int out_count = 0;
+      int n_decoded = 0;
+
+      while (n_decoded < 24) {
+
+        if ((in_count % 4) == 0) { // 0 or 3
+          viterbi_butterfly2_generic(&in[in_count & 0xfffffffc],
+                                     d_metric0_generic,
+                                     d_metric1_generic,
+                                     d_path0_generic,
+                                     d_path1_generic);
+
+          if ((in_count > 0) && (in_count % 16) == 8) { // 8 or 11
+            unsigned char c;
+
+            viterbi_get_output_generic(
+              d_metric0_generic, d_path0_generic, d_ntraceback, &c);
+
+            if (out_count >= d_ntraceback) {
+              for (int i = 0; i < 8; i++) {
+                d_decoded[(out_count - d_ntraceback) * 8 + i] =
+                  (c >> (7 - i)) & 0x1;
+                n_decoded++;
+              }
+            }
+            out_count++;
+          }
+        }
+        in_count++;
       }
 
-      // d_first_flag = header_first_flag[0];
-      // d_alloc_idx = header_alloc_idx[0];
+      return d_decoded;
+    }
 
-      d_first_flag = ((header_first_flag[0] & header_first_flag[1])
-                      | (header_first_flag[0] & header_first_flag[2])
-                      | (header_first_flag[0] & header_first_flag[3])
-                      | (header_first_flag[1] & header_first_flag[2])
-                      | (header_first_flag[1] & header_first_flag[3])
-                      | (header_first_flag[2] & header_first_flag[3])
-      );
+    void ofdm_frame_equalizer_impl::viterbi_butterfly2_generic(unsigned char *symbols,
+                                                               unsigned char *mm0,
+                                                               unsigned char *mm1,
+                                                               unsigned char *pp0,
+                                                               unsigned char *pp1)
+    {
+      int i, j, k;
 
-      d_alloc_idx = ((header_alloc_idx[0] & header_alloc_idx[1])
-                     | (header_alloc_idx[0] & header_alloc_idx[2])
-                     | (header_alloc_idx[0] & header_alloc_idx[3])
-                     | (header_alloc_idx[1] & header_alloc_idx[2])
-                     | (header_alloc_idx[1] & header_alloc_idx[3])
-                     | (header_alloc_idx[2] & header_alloc_idx[3])
-      );
+      unsigned char *metric0, *metric1;
+      unsigned char *path0, *path1;
 
-      dout << "first flag " << d_first_flag << " alloc idx " << d_alloc_idx << std::endl;
+      metric0 = mm0;
+      path0 = pp0;
+      metric1 = mm1;
+      path1 = pp1;
+
+      // Operate on 4 symbols (2 bits) at a time
+
+      unsigned char m0[16], m1[16], m2[16], m3[16], decision0[16], decision1[16],
+        survivor0[16], survivor1[16];
+      unsigned char metsv[16], metsvm[16];
+      unsigned char shift0[16], shift1[16];
+      unsigned char tmp0[16], tmp1[16];
+      unsigned char sym0v[16], sym1v[16];
+      unsigned short simd_epi16;
+
+      for (j = 0; j < 16; j++) {
+        sym0v[j] = symbols[0];
+        sym1v[j] = symbols[1];
+      }
+
+      for (i = 0; i < 2; i++) {
+        if (symbols[0] == 2) {
+          for (j = 0; j < 16; j++) {
+            metsvm[j] = d_branchtab27_generic[1].c[(i * 16) + j] ^ sym1v[j];
+            metsv[j] = 1 - metsvm[j];
+          }
+        } else if (symbols[1] == 2) {
+          for (j = 0; j < 16; j++) {
+            metsvm[j] = d_branchtab27_generic[0].c[(i * 16) + j] ^ sym0v[j];
+            metsv[j] = 1 - metsvm[j];
+          }
+        } else {
+          for (j = 0; j < 16; j++) {
+            metsvm[j] = (d_branchtab27_generic[0].c[(i * 16) + j] ^ sym0v[j]) +
+              (d_branchtab27_generic[1].c[(i * 16) + j] ^ sym1v[j]);
+            metsv[j] = 2 - metsvm[j];
+          }
+        }
+
+        for (j = 0; j < 16; j++) {
+          m0[j] = metric0[(i * 16) + j] + metsv[j];
+          m1[j] = metric0[((i + 2) * 16) + j] + metsvm[j];
+          m2[j] = metric0[(i * 16) + j] + metsvm[j];
+          m3[j] = metric0[((i + 2) * 16) + j] + metsv[j];
+        }
+
+        for (j = 0; j < 16; j++) {
+          decision0[j] = ((m0[j] - m1[j]) > 0) ? 0xff : 0x0;
+          decision1[j] = ((m2[j] - m3[j]) > 0) ? 0xff : 0x0;
+          survivor0[j] = (decision0[j] & m0[j]) | ((~decision0[j]) & m1[j]);
+          survivor1[j] = (decision1[j] & m2[j]) | ((~decision1[j]) & m3[j]);
+        }
+
+        for (j = 0; j < 16; j += 2) {
+          simd_epi16 = path0[(i * 16) + j];
+          simd_epi16 |= path0[(i * 16) + (j + 1)] << 8;
+          simd_epi16 <<= 1;
+          shift0[j] = simd_epi16;
+          shift0[j + 1] = simd_epi16 >> 8;
+
+          simd_epi16 = path0[((i + 2) * 16) + j];
+          simd_epi16 |= path0[((i + 2) * 16) + (j + 1)] << 8;
+          simd_epi16 <<= 1;
+          shift1[j] = simd_epi16;
+          shift1[j + 1] = simd_epi16 >> 8;
+        }
+        for (j = 0; j < 16; j++) {
+          shift1[j] = shift1[j] + 1;
+        }
+
+        for (j = 0, k = 0; j < 16; j += 2, k++) {
+          metric1[(2 * i * 16) + j] = survivor0[k];
+          metric1[(2 * i * 16) + (j + 1)] = survivor1[k];
+        }
+        for (j = 0; j < 16; j++) {
+          tmp0[j] = (decision0[j] & shift0[j]) | ((~decision0[j]) & shift1[j]);
+        }
+
+        for (j = 0, k = 8; j < 16; j += 2, k++) {
+          metric1[((2 * i + 1) * 16) + j] = survivor0[k];
+          metric1[((2 * i + 1) * 16) + (j + 1)] = survivor1[k];
+        }
+        for (j = 0; j < 16; j++) {
+          tmp1[j] = (decision1[j] & shift0[j]) | ((~decision1[j]) & shift1[j]);
+        }
+
+        for (j = 0, k = 0; j < 16; j += 2, k++) {
+          path1[(2 * i * 16) + j] = tmp0[k];
+          path1[(2 * i * 16) + (j + 1)] = tmp1[k];
+        }
+        for (j = 0, k = 8; j < 16; j += 2, k++) {
+          path1[((2 * i + 1) * 16) + j] = tmp0[k];
+          path1[((2 * i + 1) * 16) + (j + 1)] = tmp1[k];
+        }
+      }
+
+      metric0 = mm1;
+      path0 = pp1;
+      metric1 = mm0;
+      path1 = pp0;
+
+      for (j = 0; j < 16; j++) {
+        sym0v[j] = symbols[2];
+        sym1v[j] = symbols[3];
+      }
+
+      for (i = 0; i < 2; i++) {
+        if (symbols[2] == 2) {
+          for (j = 0; j < 16; j++) {
+            metsvm[j] = d_branchtab27_generic[1].c[(i * 16) + j] ^ sym1v[j];
+            metsv[j] = 1 - metsvm[j];
+          }
+        } else if (symbols[3] == 2) {
+          for (j = 0; j < 16; j++) {
+            metsvm[j] = d_branchtab27_generic[0].c[(i * 16) + j] ^ sym0v[j];
+            metsv[j] = 1 - metsvm[j];
+          }
+        } else {
+          for (j = 0; j < 16; j++) {
+            metsvm[j] = (d_branchtab27_generic[0].c[(i * 16) + j] ^ sym0v[j]) +
+              (d_branchtab27_generic[1].c[(i * 16) + j] ^ sym1v[j]);
+            metsv[j] = 2 - metsvm[j];
+          }
+        }
+
+        for (j = 0; j < 16; j++) {
+          m0[j] = metric0[(i * 16) + j] + metsv[j];
+          m1[j] = metric0[((i + 2) * 16) + j] + metsvm[j];
+          m2[j] = metric0[(i * 16) + j] + metsvm[j];
+          m3[j] = metric0[((i + 2) * 16) + j] + metsv[j];
+        }
+
+        for (j = 0; j < 16; j++) {
+          decision0[j] = ((m0[j] - m1[j]) > 0) ? 0xff : 0x0;
+          decision1[j] = ((m2[j] - m3[j]) > 0) ? 0xff : 0x0;
+          survivor0[j] = (decision0[j] & m0[j]) | ((~decision0[j]) & m1[j]);
+          survivor1[j] = (decision1[j] & m2[j]) | ((~decision1[j]) & m3[j]);
+        }
+
+        for (j = 0; j < 16; j += 2) {
+          simd_epi16 = path0[(i * 16) + j];
+          simd_epi16 |= path0[(i * 16) + (j + 1)] << 8;
+          simd_epi16 <<= 1;
+          shift0[j] = simd_epi16;
+          shift0[j + 1] = simd_epi16 >> 8;
+
+          simd_epi16 = path0[((i + 2) * 16) + j];
+          simd_epi16 |= path0[((i + 2) * 16) + (j + 1)] << 8;
+          simd_epi16 <<= 1;
+          shift1[j] = simd_epi16;
+          shift1[j + 1] = simd_epi16 >> 8;
+        }
+        for (j = 0; j < 16; j++) {
+          shift1[j] = shift1[j] + 1;
+        }
+
+        for (j = 0, k = 0; j < 16; j += 2, k++) {
+          metric1[(2 * i * 16) + j] = survivor0[k];
+          metric1[(2 * i * 16) + (j + 1)] = survivor1[k];
+        }
+        for (j = 0; j < 16; j++) {
+          tmp0[j] = (decision0[j] & shift0[j]) | ((~decision0[j]) & shift1[j]);
+        }
+
+        for (j = 0, k = 8; j < 16; j += 2, k++) {
+          metric1[((2 * i + 1) * 16) + j] = survivor0[k];
+          metric1[((2 * i + 1) * 16) + (j + 1)] = survivor1[k];
+        }
+        for (j = 0; j < 16; j++) {
+          tmp1[j] = (decision1[j] & shift0[j]) | ((~decision1[j]) & shift1[j]);
+        }
+
+        for (j = 0, k = 0; j < 16; j += 2, k++) {
+          path1[(2 * i * 16) + j] = tmp0[k];
+          path1[(2 * i * 16) + (j + 1)] = tmp1[k];
+        }
+        for (j = 0, k = 8; j < 16; j += 2, k++) {
+          path1[((2 * i + 1) * 16) + j] = tmp0[k];
+          path1[((2 * i + 1) * 16) + (j + 1)] = tmp1[k];
+        }
+      }
+
+    }
+
+    unsigned char ofdm_frame_equalizer_impl::viterbi_get_output_generic(unsigned char* mm0,
+                                                                        unsigned char* pp0,
+                                                                        int ntraceback,
+                                                                        unsigned char* outbuf)
+    {
+      int i;
+      int bestmetric, minmetric;
+      int beststate = 0;
+      int pos = 0;
+      int j;
+
+      // circular buffer with the last ntraceback paths
+      d_store_pos = (d_store_pos + 1) % ntraceback;
+
+      for (i = 0; i < 4; i++) {
+        for (j = 0; j < 16; j++) {
+          d_mmresult[(i * 16) + j] = mm0[(i * 16) + j];
+          d_ppresult[d_store_pos][(i * 16) + j] = pp0[(i * 16) + j];
+        }
+      }
+
+      // Find out the best final state
+      bestmetric = d_mmresult[beststate];
+      minmetric = d_mmresult[beststate];
+
+      for (i = 1; i < 64; i++) {
+        if (d_mmresult[i] > bestmetric) {
+          bestmetric = d_mmresult[i];
+          beststate = i;
+        }
+        if (d_mmresult[i] < minmetric) {
+          minmetric = d_mmresult[i];
+        }
+      }
+
+      // Trace back
+      for (i = 0, pos = d_store_pos; i < (ntraceback - 1); i++) {
+        // Obtain the state from the output bits
+        // by clocking in the output bits in reverse order.
+        // The state has only 6 bits
+        beststate = d_ppresult[pos][beststate] >> 2;
+        pos = (pos - 1 + ntraceback) % ntraceback;
+      }
+
+      // Store output byte
+      *outbuf = d_ppresult[pos][beststate];
+
+      for (i = 0; i < 4; i++) {
+        for (j = 0; j < 16; j++) {
+          pp0[(i * 16) + j] = 0;
+          mm0[(i * 16) + j] = mm0[(i * 16) + j] - minmetric;
+        }
+      }
+
+      return bestmetric;
+    }
+
+    void ofdm_frame_equalizer_impl::cc_reset()
+    {
+      int i, j;
+
+      for (i = 0; i < 4; i++) {
+        d_metric0_generic[i] = 0;
+        d_path0_generic[i] = 0;
+      }
+
+      int polys[2] = { 0x6d, 0x4f };
+      for (i = 0; i < 32; i++) {
+        d_branchtab27_generic[0].c[i] =
+          (polys[0] < 0) ^ PARTAB[(2 * i) & abs(polys[0])] ? 1 : 0;
+        d_branchtab27_generic[1].c[i] =
+          (polys[1] < 0) ^ PARTAB[(2 * i) & abs(polys[1])] ? 1 : 0;
+      }
+
+      for (i = 0; i < 64; i++) {
+        d_mmresult[i] = 0;
+        for (j = 0; j < TRACEBACK_MAX; j++) {
+          d_ppresult[j][i] = 0;
+        }
+      }
     }
 
     void ofdm_frame_equalizer_impl::equalize(gr_complex* in,
@@ -358,6 +664,56 @@ namespace gr {
         csi.push_back(d_H[i]);
       }
       return csi;
+    }
+
+    void ofdm_frame_equalizer_impl::extract_from_header(uint8_t* bits)
+    {
+      dout << "header bits" << std::endl;
+      for (int i = 0; i < 48; i++){
+        dout << (int)bits[i];
+      }
+      dout << std::endl;
+      std::vector<unsigned> header_first_flag(4);
+      std::vector<unsigned> header_alloc_idx(4);
+
+      int k = 0;
+      for (int i = 0; i < 4; i++) {
+        unsigned first_flag = 0;
+        unsigned alloc_idx = 0;
+        first_flag |= (((unsigned)bits[k]) & 1);
+        header_first_flag[i] = first_flag;
+        k++;
+        while (k % 12 != 0) {
+          alloc_idx |= (((unsigned)bits[k]) & 1) << ((k % 12) - 1);
+          k++;
+        }
+        header_alloc_idx[i] = alloc_idx;
+      }
+
+      if (k > 48){
+        std::runtime_error("header extraction failed");
+      }
+
+      // d_first_flag = header_first_flag[0];
+      // d_alloc_idx = header_alloc_idx[0];
+
+      d_first_flag = ((header_first_flag[0] & header_first_flag[1])
+                      | (header_first_flag[0] & header_first_flag[2])
+                      | (header_first_flag[0] & header_first_flag[3])
+                      | (header_first_flag[1] & header_first_flag[2])
+                      | (header_first_flag[1] & header_first_flag[3])
+                      | (header_first_flag[2] & header_first_flag[3])
+      );
+
+      d_alloc_idx = ((header_alloc_idx[0] & header_alloc_idx[1])
+                     | (header_alloc_idx[0] & header_alloc_idx[2])
+                     | (header_alloc_idx[0] & header_alloc_idx[3])
+                     | (header_alloc_idx[1] & header_alloc_idx[2])
+                     | (header_alloc_idx[1] & header_alloc_idx[3])
+                     | (header_alloc_idx[2] & header_alloc_idx[3])
+      );
+
+      dout << "first flag " << d_first_flag << " alloc idx " << d_alloc_idx << std::endl;
     }
 
   } /* namespace deepwive_v1 */

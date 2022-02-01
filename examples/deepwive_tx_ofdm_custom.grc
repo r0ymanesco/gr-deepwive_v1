@@ -934,7 +934,7 @@ blocks:
     affinity: ''
     alias: ''
     comment: ''
-    debug: 'True'
+    debug: 'False'
     length_tag_key: length_tag_key
     maxoutbuf: '0'
     minoutbuf: '0'
@@ -973,7 +973,7 @@ blocks:
     alias: ''
     bw: samp_rate
     comment: ''
-    debug: 'False'
+    debug: 'True'
     freq: tx_freq
     log: 'False'
     maxoutbuf: '0'

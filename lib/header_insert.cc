@@ -59,7 +59,7 @@ class header_insert_impl : public header_insert
       gr_complex* out = (gr_complex*) output_items[0];
 
       dout << "HEADER ninput " << ninput_items[0] << "   noutput " << noutput
-           << "state " << d_state << std::endl;
+           << " state " << d_state << std::endl;
 
       int ninput = std::min(ninput_items[0], 8192);
       const uint64_t nread = nitems_read(0);
@@ -123,7 +123,8 @@ class header_insert_impl : public header_insert
             }
 
             d_header_bits = (char*)malloc(sizeof(char) * 48);
-            generate_header_field_old(d_header_bits, d_first_flag, d_alloc_idx);
+            generate_header_field(d_header_bits, d_first_flag, d_alloc_idx);
+            // generate_header_field_old(d_header_bits, d_first_flag, d_alloc_idx);
           }
 
           while (o < noutput && d_offset < 48) {
@@ -194,7 +195,7 @@ class header_insert_impl : public header_insert
 
     void generate_header_field_old(char* out, unsigned first_flag, unsigned alloc_idx)
     {
-      dout << "tx header bits first_flag " << first_flag << " alloc " << alloc_idx << "  ";
+      dout << "tx header bits first_flag " << first_flag << " alloc " << alloc_idx << std::endl;
 
       for (int i = 0; i < 4; i++){
 
@@ -206,20 +207,25 @@ class header_insert_impl : public header_insert
           dout << (int)out[k];
         }
       }
-
       dout << std::endl;
+
     }
 
     void generate_header_field(char* out, unsigned first_flag, unsigned alloc_idx)
     {
+      dout << "tx cc header bits first_flag " << first_flag << " alloc " << alloc_idx << std::endl;
+
       char* header_bits = (char*)malloc(sizeof(char) * 24);
 
+      // first_flag bits
       header_bits[0] = get_bit(first_flag, 0);
 
+      // alloc_idx bits
       for (int i = 1; i < 12; i++) {
         header_bits[i] = get_bit(alloc_idx, i-1);
       }
 
+      // 13th bit is parity
       int sum = 0;
       for (int i = 0; i < 12; i++) {
         if (header_bits[i]) {
@@ -228,11 +234,17 @@ class header_insert_impl : public header_insert
       }
       header_bits[12] = sum % 2;
 
+      // 14-24th are zeros
       for (int i = 13; i < 24; i++) {
         header_bits[i] = 0;
       }
 
       convolutional_encoding(header_bits, out);
+
+      for (int k = 0; k < 48; k++) {
+        dout << (int)out[k];
+      }
+      dout << std::endl;
 
       free(header_bits);
     }

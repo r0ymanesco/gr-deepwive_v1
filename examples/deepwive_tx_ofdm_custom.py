@@ -663,8 +663,8 @@ class deepwive_tx_ofdm_custom(gr.top_block, Qt.QWidget):
         self.digital_ofdm_carrier_allocator_cvc_0_0_0.set_min_output_buffer(207744)
         self.deepwive_v1_ofdm_sync_short_0 = deepwive_v1.ofdm_sync_short(0.56, 2, False, False)
         self.deepwive_v1_ofdm_sync_long_0 = deepwive_v1.ofdm_sync_long(320, False, False)
-        self.deepwive_v1_ofdm_frame_equalizer_1 = deepwive_v1.ofdm_frame_equalizer(tx_freq, samp_rate, packet_len, False, False)
-        self.deepwive_v1_header_insert_0 = deepwive_v1.header_insert(packet_len, length_tag_key, True)
+        self.deepwive_v1_ofdm_frame_equalizer_1 = deepwive_v1.ofdm_frame_equalizer(tx_freq, samp_rate, packet_len, False, True)
+        self.deepwive_v1_header_insert_0 = deepwive_v1.header_insert(packet_len, length_tag_key, False)
         self.deepwive_v1_deepwive_v1_source_1 = deepwive_v1.deepwive_v1_source('/home/tt2114/workspace/gr-deepwive_v1/examples/test_files/v_YoYo_g25_c05.avi', 240,
         '/home/tt2114/workspace/gr-deepwive_v1/examples/test_files/key_encoder.trt', '/home/tt2114/workspace/gr-deepwive_v1/examples/test_files/interp_encoder.trt', '/home/tt2114/workspace/gr-deepwive_v1/examples/test_files/ssf_net.trt', '/home/tt2114/workspace/gr-deepwive_v1/examples/test_files/bw_allocator.trt',
         packet_len, 20., 20, 5, False)
