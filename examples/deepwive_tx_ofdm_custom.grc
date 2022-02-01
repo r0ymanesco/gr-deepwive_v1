@@ -65,7 +65,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [976, 4.0]
+    coordinate: [832, 4.0]
     rotation: 0
     state: enabled
 - name: length_tag_key
@@ -115,18 +115,6 @@ blocks:
     bus_source: false
     bus_structure: null
     coordinate: [488, 4.0]
-    rotation: 0
-    state: enabled
-- name: payload_mod
-  id: variable
-  parameters:
-    comment: ''
-    value: digital.constellation_qpsk()
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [744, 4.0]
     rotation: 0
     state: enabled
 - name: pilot_carriers
@@ -188,7 +176,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [904, 4.0]
+    coordinate: [744, 12.0]
     rotation: 0
     state: enabled
 - name: rx_gain
@@ -287,7 +275,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [904, 68.0]
+    coordinate: [896, 76.0]
     rotation: 0
     state: true
 - name: analog_frequency_modulator_fc_0
@@ -555,25 +543,6 @@ blocks:
     bus_structure: null
     coordinate: [792, 1668.0]
     rotation: 180
-    state: true
-- name: blocks_stream_to_tagged_stream_0
-  id: blocks_stream_to_tagged_stream
-  parameters:
-    affinity: ''
-    alias: ''
-    comment: ''
-    len_tag_key: length_tag_key
-    maxoutbuf: '0'
-    minoutbuf: '0'
-    packet_len: packet_len + 48
-    type: complex
-    vlen: '1'
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [448, 324.0]
-    rotation: 0
     state: true
 - name: blocks_stream_to_vector_0
   id: blocks_stream_to_vector
@@ -959,6 +928,24 @@ blocks:
     coordinate: [24, 252.0]
     rotation: 0
     state: enabled
+- name: deepwive_v1_header_insert_0
+  id: deepwive_v1_header_insert
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    debug: 'True'
+    length_tag_key: length_tag_key
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    packet_len: packet_len
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [376, 316.0]
+    rotation: 0
+    state: true
 - name: deepwive_v1_ofdm_frame_equalizer_0
   id: deepwive_v1_ofdm_frame_equalizer
   parameters:
@@ -1617,7 +1604,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [384, 444.0]
+    coordinate: [376, 428.0]
     rotation: 0
     state: true
 - name: qtgui_freq_sink_x_0
@@ -3008,8 +2995,6 @@ connections:
 - [blocks_multiply_const_vxx_0, '0', virtual_sink_2_0, '0']
 - [blocks_multiply_xx_0_0, '0', blocks_moving_average_xx_1, '0']
 - [blocks_pdu_to_tagged_stream_1, '0', qtgui_time_sink_x_2_0_0_0_3, '0']
-- [blocks_stream_to_tagged_stream_0, '0', digital_ofdm_carrier_allocator_cvc_0_0_0,
-  '0']
 - [blocks_stream_to_vector_0, '0', fft_vxx_0_1, '0']
 - [blocks_stream_to_vector_0_0, '0', fft_vxx_0_1_0, '0']
 - [blocks_tag_gate_0, '0', limesdr_sink_0, '0']
@@ -3018,8 +3003,9 @@ connections:
 - [blocks_vector_to_stream_0, '0', qtgui_time_sink_x_3, '0']
 - [blocks_vector_to_stream_0_1, '0', qtgui_time_sink_x_3_1, '0']
 - [blocks_vector_to_stream_1, '0', qtgui_time_sink_x_2_0_0_0_0, '0']
-- [deepwive_v1_deepwive_v1_source_1, '0', blocks_stream_to_tagged_stream_0, '0']
+- [deepwive_v1_deepwive_v1_source_1, '0', deepwive_v1_header_insert_0, '0']
 - [deepwive_v1_deepwive_v1_source_1, '0', qtgui_const_sink_x_1, '0']
+- [deepwive_v1_header_insert_0, '0', digital_ofdm_carrier_allocator_cvc_0_0_0, '0']
 - [deepwive_v1_ofdm_frame_equalizer_1, payload_IQ, blocks_pdu_to_tagged_stream_1,
   pdus]
 - [deepwive_v1_ofdm_frame_equalizer_1, payload_IQ, deepwive_v1_deepwive_v1_sink_0_1,

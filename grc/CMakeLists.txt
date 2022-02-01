@@ -23,5 +23,6 @@ install(FILES
     deepwive_v1_awgn_channel.block.yml
     deepwive_v1_ofdm_sync_short.block.yml
     deepwive_v1_ofdm_sync_long.block.yml
-    deepwive_v1_ofdm_frame_equalizer.block.yml DESTINATION share/gnuradio/grc/blocks
+    deepwive_v1_ofdm_frame_equalizer.block.yml
+    deepwive_v1_header_insert.block.yml DESTINATION share/gnuradio/grc/blocks
 )

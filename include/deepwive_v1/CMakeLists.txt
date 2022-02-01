@@ -25,5 +25,6 @@ install(FILES
     api.h
     ofdm_sync_short.h
     ofdm_sync_long.h
-    ofdm_frame_equalizer.h DESTINATION include/deepwive_v1
+    ofdm_frame_equalizer.h
+    header_insert.h DESTINATION include/deepwive_v1
 )

@@ -12,12 +12,15 @@
 #include "deepwive_v1/ofdm_sync_short.h"
 #include "deepwive_v1/ofdm_sync_long.h"
 #include "deepwive_v1/ofdm_frame_equalizer.h"
+#include "deepwive_v1/header_insert.h"
 %}
 
 %include "deepwive_v1/ofdm_sync_short.h"
 %include "deepwive_v1/ofdm_sync_long.h"
 %include "deepwive_v1/ofdm_frame_equalizer.h"
+%include "deepwive_v1/header_insert.h"
 
 GR_SWIG_BLOCK_MAGIC2(deepwive_v1, ofdm_sync_short);
 GR_SWIG_BLOCK_MAGIC2(deepwive_v1, ofdm_sync_long);
 GR_SWIG_BLOCK_MAGIC2(deepwive_v1, ofdm_frame_equalizer);
+GR_SWIG_BLOCK_MAGIC2(deepwive_v1, header_insert);

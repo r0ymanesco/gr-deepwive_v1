@@ -86,7 +86,6 @@ class deepwive_tx_ofdm_custom(gr.top_block, Qt.QWidget):
         self.rolloff = rolloff = 0
         self.pilot_symbols = pilot_symbols = ((1, 1, 1, -1), (1, 1, 1, -1), (1, 1, 1, -1), (1, 1, 1, -1), (-1, -1, -1, 1), (-1, -1, -1, 1), (-1, -1, -1, 1), (1, 1, 1, -1), (-1, -1, -1, 1), (-1, -1, -1, 1), (-1, -1, -1, 1), (-1, -1, -1, 1), (1, 1, 1, -1), (1, 1, 1, -1), (-1, -1, -1, 1), (1, 1, 1, -1), (-1, -1, -1, 1), (-1, -1, -1, 1), (1, 1, 1, -1), (1, 1, 1, -1), (-1, -1, -1, 1), (1, 1, 1, -1), (1, 1, 1, -1), (-1, -1, -1, 1), (1, 1, 1, -1), (1, 1, 1, -1), (1, 1, 1, -1), (1, 1, 1, -1), (1, 1, 1, -1), (1, 1, 1, -1), (-1, -1, -1, 1), (1, 1, 1, -1), (1, 1, 1, -1), (1, 1, 1, -1), (-1, -1, -1, 1), (1, 1, 1, -1), (1, 1, 1, -1), (-1, -1, -1, 1), (-1, -1, -1, 1), (1, 1, 1, -1), (1, 1, 1, -1), (1, 1, 1, -1), (-1, -1, -1, 1), (1, 1, 1, -1), (-1, -1, -1, 1), (-1, -1, -1, 1), (-1, -1, -1, 1), (1, 1, 1, -1), (-1, -1, -1, 1), (1, 1, 1, -1), (-1, -1, -1, 1), (-1, -1, -1, 1), (1, 1, 1, -1), (-1, -1, -1, 1), (-1, -1, -1, 1), (1, 1, 1, -1), (1, 1, 1, -1), (1, 1, 1, -1), (1, 1, 1, -1), (1, 1, 1, -1), (-1, -1, -1, 1), (-1, -1, -1, 1), (1, 1, 1, -1), (1, 1, 1, -1), (-1, -1, -1, 1), (-1, -1, -1, 1), (1, 1, 1, -1), (-1, -1, -1, 1), (1, 1, 1, -1), (-1, -1, -1, 1), (1, 1, 1, -1), (1, 1, 1, -1), (-1, -1, -1, 1), (-1, -1, -1, 1), (-1, -1, -1, 1), (1, 1, 1, -1), (1, 1, 1, -1), (-1, -1, -1, 1), (-1, -1, -1, 1), (-1, -1, -1, 1), (-1, -1, -1, 1), (1, 1, 1, -1), (-1, -1, -1, 1), (-1, -1, -1, 1), (1, 1, 1, -1), (-1, -1, -1, 1), (1, 1, 1, -1), (1, 1, 1, -1), (1, 1, 1, -1), (1, 1, 1, -1), (-1, -1, -1, 1), (1, 1, 1, -1), (-1, -1, -1, 1), (1, 1, 1, -1), (-1, -1, -1, 1), (1, 1, 1, -1), (-1, -1, -1, 1), (-1, -1, -1, 1), (-1, -1, -1, 1), (-1, -1, -1, 1), (-1, -1, -1, 1), (1, 1, 1, -1), (-1, -1, -1, 1), (1, 1, 1, -1), (1, 1, 1, -1), (-1, -1, -1, 1), (1, 1, 1, -1), (-1, -1, -1, 1), (1, 1, 1, -1), (1, 1, 1, -1), (1, 1, 1, -1), (-1, -1, -1, 1), (-1, -1, -1, 1), (1, 1, 1, -1), (-1, -1, -1, 1), (-1, -1, -1, 1), (-1, -1, -1, 1), (1, 1, 1, -1), (1, 1, 1, -1), (1, 1, 1, -1), (-1, -1, -1, 1), (-1, -1, -1, 1), (-1, -1, -1, 1), (-1, -1, -1, 1), (-1, -1, -1, 1), (-1, -1, -1, 1), (-1, -1, -1, 1))
         self.pilot_carriers = pilot_carriers = ((-21, -7, 7, 21), )
-        self.payload_mod = payload_mod = digital.constellation_qpsk()
         self.packet_len = packet_len = 288
         self.occupied_carriers = occupied_carriers = (list(range(-26, -21)) + list(range(-20, -7)) + list(range(-6, 0)) + list(range(1, 7)) + list(range(8, 21)) +list( range(22, 27)),)
         self.max_symbols = max_symbols = int(5 + 1 + ((16 + 800 * 8 + 6) * 2) / 24)
@@ -665,6 +664,7 @@ class deepwive_tx_ofdm_custom(gr.top_block, Qt.QWidget):
         self.deepwive_v1_ofdm_sync_short_0 = deepwive_v1.ofdm_sync_short(0.56, 2, False, False)
         self.deepwive_v1_ofdm_sync_long_0 = deepwive_v1.ofdm_sync_long(320, False, False)
         self.deepwive_v1_ofdm_frame_equalizer_1 = deepwive_v1.ofdm_frame_equalizer(tx_freq, samp_rate, packet_len, False, False)
+        self.deepwive_v1_header_insert_0 = deepwive_v1.header_insert(packet_len, length_tag_key, True)
         self.deepwive_v1_deepwive_v1_source_1 = deepwive_v1.deepwive_v1_source('/home/tt2114/workspace/gr-deepwive_v1/examples/test_files/v_YoYo_g25_c05.avi', 240,
         '/home/tt2114/workspace/gr-deepwive_v1/examples/test_files/key_encoder.trt', '/home/tt2114/workspace/gr-deepwive_v1/examples/test_files/interp_encoder.trt', '/home/tt2114/workspace/gr-deepwive_v1/examples/test_files/ssf_net.trt', '/home/tt2114/workspace/gr-deepwive_v1/examples/test_files/bw_allocator.trt',
         packet_len, 20., 20, 5, False)
@@ -679,7 +679,6 @@ class deepwive_tx_ofdm_custom(gr.top_block, Qt.QWidget):
         self.blocks_tag_gate_0.set_single_key("")
         self.blocks_stream_to_vector_0_0 = blocks.stream_to_vector(gr.sizeof_gr_complex*1, fft_len)
         self.blocks_stream_to_vector_0 = blocks.stream_to_vector(gr.sizeof_gr_complex*1, fft_len)
-        self.blocks_stream_to_tagged_stream_0 = blocks.stream_to_tagged_stream(gr.sizeof_gr_complex, 1, packet_len + 48, length_tag_key)
         self.blocks_pdu_to_tagged_stream_1 = blocks.pdu_to_tagged_stream(blocks.complex_t, length_tag_key)
         self.blocks_multiply_xx_0_0 = blocks.multiply_vcc(1)
         self.blocks_multiply_const_vxx_0 = blocks.multiply_const_cc(0.1)
@@ -710,7 +709,6 @@ class deepwive_tx_ofdm_custom(gr.top_block, Qt.QWidget):
         self.connect((self.blocks_multiply_const_vxx_0, 0), (self.blocks_tag_gate_0, 0))
         self.connect((self.blocks_multiply_xx_0_0, 0), (self.blocks_moving_average_xx_1, 0))
         self.connect((self.blocks_pdu_to_tagged_stream_1, 0), (self.qtgui_time_sink_x_2_0_0_0_3, 0))
-        self.connect((self.blocks_stream_to_tagged_stream_0, 0), (self.digital_ofdm_carrier_allocator_cvc_0_0_0, 0))
         self.connect((self.blocks_stream_to_vector_0, 0), (self.fft_vxx_0_1, 0))
         self.connect((self.blocks_stream_to_vector_0_0, 0), (self.fft_vxx_0_1_0, 0))
         self.connect((self.blocks_tag_gate_0, 0), (self.limesdr_sink_0, 0))
@@ -719,8 +717,9 @@ class deepwive_tx_ofdm_custom(gr.top_block, Qt.QWidget):
         self.connect((self.blocks_vector_to_stream_0, 0), (self.qtgui_time_sink_x_3, 0))
         self.connect((self.blocks_vector_to_stream_0_1, 0), (self.qtgui_time_sink_x_3_1, 0))
         self.connect((self.blocks_vector_to_stream_1, 0), (self.qtgui_time_sink_x_2_0_0_0_0, 0))
-        self.connect((self.deepwive_v1_deepwive_v1_source_1, 0), (self.blocks_stream_to_tagged_stream_0, 0))
+        self.connect((self.deepwive_v1_deepwive_v1_source_1, 0), (self.deepwive_v1_header_insert_0, 0))
         self.connect((self.deepwive_v1_deepwive_v1_source_1, 0), (self.qtgui_const_sink_x_1, 0))
+        self.connect((self.deepwive_v1_header_insert_0, 0), (self.digital_ofdm_carrier_allocator_cvc_0_0_0, 0))
         self.connect((self.deepwive_v1_ofdm_sync_long_0, 0), (self.blocks_stream_to_vector_0, 0))
         self.connect((self.deepwive_v1_ofdm_sync_long_0, 0), (self.qtgui_time_sink_x_2_0_0_0, 0))
         self.connect((self.deepwive_v1_ofdm_sync_short_0, 0), (self.blocks_stream_to_vector_0_0, 0))
@@ -819,19 +818,11 @@ class deepwive_tx_ofdm_custom(gr.top_block, Qt.QWidget):
     def set_pilot_carriers(self, pilot_carriers):
         self.pilot_carriers = pilot_carriers
 
-    def get_payload_mod(self):
-        return self.payload_mod
-
-    def set_payload_mod(self, payload_mod):
-        self.payload_mod = payload_mod
-
     def get_packet_len(self):
         return self.packet_len
 
     def set_packet_len(self, packet_len):
         self.packet_len = packet_len
-        self.blocks_stream_to_tagged_stream_0.set_packet_len(self.packet_len + 48)
-        self.blocks_stream_to_tagged_stream_0.set_packet_len_pmt(self.packet_len + 48)
 
     def get_occupied_carriers(self):
         return self.occupied_carriers
