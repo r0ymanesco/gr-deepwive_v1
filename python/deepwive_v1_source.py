@@ -610,7 +610,8 @@ class deepwive_v1_source(gr.sync_block):
                     codeword = np.concatenate((codeword.reshape(-1, 2), np.zeros((self.n_padding, 2))), axis=0)
                     self.first = 0.
 
-                self.packets = np.vsplit(codeword * 0.1, self.n_packets)
+                codeword *= 0.1
+                self.packets = np.vsplit(codeword, self.n_packets)
 
                 # if first:
                 #     allocation_bits = [1] * 11
