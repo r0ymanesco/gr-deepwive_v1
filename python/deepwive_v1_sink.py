@@ -432,6 +432,9 @@ class deepwive_v1_sink(gr.basic_block):
         # print(first_flag)
         detect_first = self._first_frame_detection(first_flag)
 
+        self.snr_buffer.append(float(tags['snr']))
+        # print('snr {}'.format(float(tags['snr'])))
+
         if False:
             print('first {} alloc {}'.format(first_flag, alloc_idx))
             # if alloc_idx != (self.prev_idx + 1):
@@ -445,6 +448,9 @@ class deepwive_v1_sink(gr.basic_block):
             codeword = np.concatenate(self.curr_frame_packets, axis=0)[:self.ch_uses-self.n_padding]
             codeword = np.ascontiguousarray(codeword, dtype=self.target_dtype).reshape(self.codeword_shape)
             codeword = codeword / 0.1
+
+            # correction = 10 * np.log10(0.1**2)
+            # self.snr = np.round(np.mean(self.snr_buffer) + correction).reshape(1, 1).astype(self.target_dtype)
 
             if detect_first:
                 self._video_reset()
@@ -478,6 +484,7 @@ class deepwive_v1_sink(gr.basic_block):
         self.frame_buffer = []
         self.first_buffer = []
         self.alloc_buffer = []
+        self.snr_buffer = []
 
     def _video_reset(self):
         self._gop_reset()

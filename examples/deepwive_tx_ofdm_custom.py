@@ -26,6 +26,7 @@ from gnuradio import qtgui
 from gnuradio.filter import firdes
 import sip
 from gnuradio import blocks
+from gnuradio import channels
 from gnuradio import digital
 from gnuradio import fft
 from gnuradio.fft import window
@@ -37,7 +38,6 @@ from gnuradio.eng_arg import eng_float, intx
 from gnuradio import eng_notation
 from gnuradio.qtgui import Range, RangeWidget
 import deepwive_v1
-import limesdr
 
 from gnuradio import qtgui
 
@@ -86,16 +86,20 @@ class deepwive_tx_ofdm_custom(gr.top_block, Qt.QWidget):
         self.rolloff = rolloff = 0
         self.pilot_symbols = pilot_symbols = ((1, 1, 1, -1), (1, 1, 1, -1), (1, 1, 1, -1), (1, 1, 1, -1), (-1, -1, -1, 1), (-1, -1, -1, 1), (-1, -1, -1, 1), (1, 1, 1, -1), (-1, -1, -1, 1), (-1, -1, -1, 1), (-1, -1, -1, 1), (-1, -1, -1, 1), (1, 1, 1, -1), (1, 1, 1, -1), (-1, -1, -1, 1), (1, 1, 1, -1), (-1, -1, -1, 1), (-1, -1, -1, 1), (1, 1, 1, -1), (1, 1, 1, -1), (-1, -1, -1, 1), (1, 1, 1, -1), (1, 1, 1, -1), (-1, -1, -1, 1), (1, 1, 1, -1), (1, 1, 1, -1), (1, 1, 1, -1), (1, 1, 1, -1), (1, 1, 1, -1), (1, 1, 1, -1), (-1, -1, -1, 1), (1, 1, 1, -1), (1, 1, 1, -1), (1, 1, 1, -1), (-1, -1, -1, 1), (1, 1, 1, -1), (1, 1, 1, -1), (-1, -1, -1, 1), (-1, -1, -1, 1), (1, 1, 1, -1), (1, 1, 1, -1), (1, 1, 1, -1), (-1, -1, -1, 1), (1, 1, 1, -1), (-1, -1, -1, 1), (-1, -1, -1, 1), (-1, -1, -1, 1), (1, 1, 1, -1), (-1, -1, -1, 1), (1, 1, 1, -1), (-1, -1, -1, 1), (-1, -1, -1, 1), (1, 1, 1, -1), (-1, -1, -1, 1), (-1, -1, -1, 1), (1, 1, 1, -1), (1, 1, 1, -1), (1, 1, 1, -1), (1, 1, 1, -1), (1, 1, 1, -1), (-1, -1, -1, 1), (-1, -1, -1, 1), (1, 1, 1, -1), (1, 1, 1, -1), (-1, -1, -1, 1), (-1, -1, -1, 1), (1, 1, 1, -1), (-1, -1, -1, 1), (1, 1, 1, -1), (-1, -1, -1, 1), (1, 1, 1, -1), (1, 1, 1, -1), (-1, -1, -1, 1), (-1, -1, -1, 1), (-1, -1, -1, 1), (1, 1, 1, -1), (1, 1, 1, -1), (-1, -1, -1, 1), (-1, -1, -1, 1), (-1, -1, -1, 1), (-1, -1, -1, 1), (1, 1, 1, -1), (-1, -1, -1, 1), (-1, -1, -1, 1), (1, 1, 1, -1), (-1, -1, -1, 1), (1, 1, 1, -1), (1, 1, 1, -1), (1, 1, 1, -1), (1, 1, 1, -1), (-1, -1, -1, 1), (1, 1, 1, -1), (-1, -1, -1, 1), (1, 1, 1, -1), (-1, -1, -1, 1), (1, 1, 1, -1), (-1, -1, -1, 1), (-1, -1, -1, 1), (-1, -1, -1, 1), (-1, -1, -1, 1), (-1, -1, -1, 1), (1, 1, 1, -1), (-1, -1, -1, 1), (1, 1, 1, -1), (1, 1, 1, -1), (-1, -1, -1, 1), (1, 1, 1, -1), (-1, -1, -1, 1), (1, 1, 1, -1), (1, 1, 1, -1), (1, 1, 1, -1), (-1, -1, -1, 1), (-1, -1, -1, 1), (1, 1, 1, -1), (-1, -1, -1, 1), (-1, -1, -1, 1), (-1, -1, -1, 1), (1, 1, 1, -1), (1, 1, 1, -1), (1, 1, 1, -1), (-1, -1, -1, 1), (-1, -1, -1, 1), (-1, -1, -1, 1), (-1, -1, -1, 1), (-1, -1, -1, 1), (-1, -1, -1, 1), (-1, -1, -1, 1))
         self.pilot_carriers = pilot_carriers = ((-21, -7, 7, 21), )
-        self.packet_len = packet_len = 288
+        self.packet_len = packet_len = 720
         self.occupied_carriers = occupied_carriers = (list(range(-26, -21)) + list(range(-20, -7)) + list(range(-6, 0)) + list(range(1, 7)) + list(range(8, 21)) +list( range(22, 27)),)
         self.max_symbols = max_symbols = int(5 + 1 + ((16 + 800 * 8 + 6) * 2) / 24)
         self.length_tag_key = length_tag_key = "packet_len"
         self.frame_length_tag_key = frame_length_tag_key = "frame_len"
         self.cp_len = cp_len = fft_len // 4
+        self.ch_noise = ch_noise = 0.4
 
         ##################################################
         # Blocks
         ##################################################
+        self._ch_noise_range = Range(0.1, 0.9, 0.1, 0.4, 200)
+        self._ch_noise_win = RangeWidget(self._ch_noise_range, self.set_ch_noise, 'Noise voltage', "counter_slider", float)
+        self.top_layout.addWidget(self._ch_noise_win)
         self._tun_gain_range = Range(0, 73, 1, 70, 200)
         self._tun_gain_win = RangeWidget(self._tun_gain_range, self.set_tun_gain, 'Tx Gain (dB)', "counter_slider", int)
         self.top_layout.addWidget(self._tun_gain_win)
@@ -499,46 +503,6 @@ class deepwive_tx_ofdm_custom(gr.top_block, Qt.QWidget):
 
         self._qtgui_time_sink_x_0_win = sip.wrapinstance(self.qtgui_time_sink_x_0.pyqwidget(), Qt.QWidget)
         self.top_layout.addWidget(self._qtgui_time_sink_x_0_win)
-        self.qtgui_freq_sink_x_0_0 = qtgui.freq_sink_c(
-            10240, #size
-            firdes.WIN_BLACKMAN_hARRIS, #wintype
-            0, #fc
-            samp_rate, #bw
-            'Rx FFT Plot', #name
-            1
-        )
-        self.qtgui_freq_sink_x_0_0.set_update_time(0.10)
-        self.qtgui_freq_sink_x_0_0.set_y_axis(-140, 10)
-        self.qtgui_freq_sink_x_0_0.set_y_label('Relative Gain', 'dB')
-        self.qtgui_freq_sink_x_0_0.set_trigger_mode(qtgui.TRIG_MODE_FREE, 0.0, 0, "")
-        self.qtgui_freq_sink_x_0_0.enable_autoscale(True)
-        self.qtgui_freq_sink_x_0_0.enable_grid(False)
-        self.qtgui_freq_sink_x_0_0.set_fft_average(1.0)
-        self.qtgui_freq_sink_x_0_0.enable_axis_labels(True)
-        self.qtgui_freq_sink_x_0_0.enable_control_panel(False)
-
-
-
-        labels = ['', '', '', '', '',
-            '', '', '', '', '']
-        widths = [1, 1, 1, 1, 1,
-            1, 1, 1, 1, 1]
-        colors = ["blue", "red", "green", "black", "cyan",
-            "magenta", "yellow", "dark red", "dark green", "dark blue"]
-        alphas = [1.0, 1.0, 1.0, 1.0, 1.0,
-            1.0, 1.0, 1.0, 1.0, 1.0]
-
-        for i in range(1):
-            if len(labels[i]) == 0:
-                self.qtgui_freq_sink_x_0_0.set_line_label(i, "Data {0}".format(i))
-            else:
-                self.qtgui_freq_sink_x_0_0.set_line_label(i, labels[i])
-            self.qtgui_freq_sink_x_0_0.set_line_width(i, widths[i])
-            self.qtgui_freq_sink_x_0_0.set_line_color(i, colors[i])
-            self.qtgui_freq_sink_x_0_0.set_line_alpha(i, alphas[i])
-
-        self._qtgui_freq_sink_x_0_0_win = sip.wrapinstance(self.qtgui_freq_sink_x_0_0.pyqwidget(), Qt.QWidget)
-        self.top_layout.addWidget(self._qtgui_freq_sink_x_0_0_win)
         self.qtgui_freq_sink_x_0 = qtgui.freq_sink_c(
             10240, #size
             firdes.WIN_BLACKMAN_hARRIS, #wintype
@@ -619,49 +583,13 @@ class deepwive_tx_ofdm_custom(gr.top_block, Qt.QWidget):
 
         self._qtgui_const_sink_x_1_win = sip.wrapinstance(self.qtgui_const_sink_x_1.pyqwidget(), Qt.QWidget)
         self.top_layout.addWidget(self._qtgui_const_sink_x_1_win)
-        self.limesdr_source_0 = limesdr.source('00090706024F2436', 0, '', False)
-
-
-        self.limesdr_source_0.set_sample_rate(samp_rate)
-
-
-        self.limesdr_source_0.set_center_freq(tx_freq, 0)
-
-        self.limesdr_source_0.set_bandwidth(5e6, 0)
-
-
-        self.limesdr_source_0.set_digital_filter(samp_rate, 0)
-
-
-        self.limesdr_source_0.set_gain(rx_gain, 0)
-
-
-        self.limesdr_source_0.set_antenna(2, 0)
-        self.limesdr_sink_0 = limesdr.sink('00090706024F2436', 0, '', '')
-
-
-        self.limesdr_sink_0.set_sample_rate(samp_rate)
-
-
-        self.limesdr_sink_0.set_center_freq(tx_freq, 0)
-
-        self.limesdr_sink_0.set_bandwidth(5e6, 0)
-
-
-        self.limesdr_sink_0.set_digital_filter(samp_rate, 0)
-
-
-        self.limesdr_sink_0.set_gain(tun_gain, 0)
-
-
-        self.limesdr_sink_0.set_antenna(1, 0)
         self.fft_vxx_0_1_0 = fft.fft_vcc(fft_len, True, (), True, 1)
         self.fft_vxx_0_1 = fft.fft_vcc(fft_len, True, (), True, 1)
         self.fft_vxx_0 = fft.fft_vcc(fft_len, False, (), True, 1)
         self.digital_ofdm_cyclic_prefixer_0 = digital.ofdm_cyclic_prefixer(fft_len, fft_len + cp_len, rolloff, length_tag_key)
         self.digital_ofdm_carrier_allocator_cvc_0_0_0 = digital.ofdm_carrier_allocator_cvc( 64, occupied_carriers, pilot_carriers, pilot_symbols, sync_word, "packet_len", True)
         self.digital_ofdm_carrier_allocator_cvc_0_0_0.set_min_output_buffer(207744)
-        self.deepwive_v1_ofdm_sync_short_0 = deepwive_v1.ofdm_sync_short(0.56, 2, False, False)
+        self.deepwive_v1_ofdm_sync_short_0 = deepwive_v1.ofdm_sync_short(0.45, 2, False, False)
         self.deepwive_v1_ofdm_sync_long_0 = deepwive_v1.ofdm_sync_long(320, False, False)
         self.deepwive_v1_ofdm_frame_equalizer_1 = deepwive_v1.ofdm_frame_equalizer(tx_freq, samp_rate, packet_len, False, True)
         self.deepwive_v1_header_insert_0 = deepwive_v1.header_insert(packet_len, length_tag_key, False)
@@ -672,6 +600,13 @@ class deepwive_tx_ofdm_custom(gr.top_block, Qt.QWidget):
         '/home/tt2114/workspace/gr-deepwive_v1/examples/test_files/key_decoder.trt', '/home/tt2114/workspace/gr-deepwive_v1/examples/test_files/interp_decoder.trt',
         packet_len, 20, 20, 5, 0,
         False)
+        self.channels_channel_model_0 = channels.channel_model(
+            noise_voltage=ch_noise,
+            frequency_offset=0,
+            epsilon=1.0,
+            taps=[1.0],
+            noise_seed=0,
+            block_tags=False)
         self.blocks_vector_to_stream_1 = blocks.vector_to_stream(gr.sizeof_gr_complex*1, 64)
         self.blocks_vector_to_stream_0_1 = blocks.vector_to_stream(gr.sizeof_gr_complex*1, fft_len)
         self.blocks_vector_to_stream_0 = blocks.vector_to_stream(gr.sizeof_gr_complex*1, fft_len)
@@ -711,12 +646,14 @@ class deepwive_tx_ofdm_custom(gr.top_block, Qt.QWidget):
         self.connect((self.blocks_pdu_to_tagged_stream_1, 0), (self.qtgui_time_sink_x_2_0_0_0_3, 0))
         self.connect((self.blocks_stream_to_vector_0, 0), (self.fft_vxx_0_1, 0))
         self.connect((self.blocks_stream_to_vector_0_0, 0), (self.fft_vxx_0_1_0, 0))
-        self.connect((self.blocks_tag_gate_0, 0), (self.limesdr_sink_0, 0))
         self.connect((self.blocks_tag_gate_0, 0), (self.qtgui_freq_sink_x_0, 0))
         self.connect((self.blocks_tag_gate_0, 0), (self.qtgui_time_sink_x_0, 0))
         self.connect((self.blocks_vector_to_stream_0, 0), (self.qtgui_time_sink_x_3, 0))
         self.connect((self.blocks_vector_to_stream_0_1, 0), (self.qtgui_time_sink_x_3_1, 0))
         self.connect((self.blocks_vector_to_stream_1, 0), (self.qtgui_time_sink_x_2_0_0_0_0, 0))
+        self.connect((self.channels_channel_model_0, 0), (self.blocks_complex_to_mag_squared_0, 0))
+        self.connect((self.channels_channel_model_0, 0), (self.blocks_delay_0_0, 0))
+        self.connect((self.channels_channel_model_0, 0), (self.blocks_multiply_xx_0_0, 0))
         self.connect((self.deepwive_v1_deepwive_v1_source_1, 0), (self.deepwive_v1_header_insert_0, 0))
         self.connect((self.deepwive_v1_deepwive_v1_source_1, 0), (self.qtgui_const_sink_x_1, 0))
         self.connect((self.deepwive_v1_header_insert_0, 0), (self.digital_ofdm_carrier_allocator_cvc_0_0_0, 0))
@@ -728,14 +665,11 @@ class deepwive_tx_ofdm_custom(gr.top_block, Qt.QWidget):
         self.connect((self.digital_ofdm_carrier_allocator_cvc_0_0_0, 0), (self.blocks_vector_to_stream_1, 0))
         self.connect((self.digital_ofdm_carrier_allocator_cvc_0_0_0, 0), (self.fft_vxx_0, 0))
         self.connect((self.digital_ofdm_cyclic_prefixer_0, 0), (self.blocks_multiply_const_vxx_0, 0))
+        self.connect((self.digital_ofdm_cyclic_prefixer_0, 0), (self.channels_channel_model_0, 0))
         self.connect((self.fft_vxx_0, 0), (self.digital_ofdm_cyclic_prefixer_0, 0))
         self.connect((self.fft_vxx_0_1, 0), (self.blocks_vector_to_stream_0, 0))
         self.connect((self.fft_vxx_0_1, 0), (self.deepwive_v1_ofdm_frame_equalizer_1, 0))
         self.connect((self.fft_vxx_0_1_0, 0), (self.blocks_vector_to_stream_0_1, 0))
-        self.connect((self.limesdr_source_0, 0), (self.blocks_complex_to_mag_squared_0, 0))
-        self.connect((self.limesdr_source_0, 0), (self.blocks_delay_0_0, 0))
-        self.connect((self.limesdr_source_0, 0), (self.blocks_multiply_xx_0_0, 0))
-        self.connect((self.limesdr_source_0, 0), (self.qtgui_freq_sink_x_0_0, 0))
 
 
     def closeEvent(self, event):
@@ -755,16 +689,12 @@ class deepwive_tx_ofdm_custom(gr.top_block, Qt.QWidget):
 
     def set_tx_freq(self, tx_freq):
         self.tx_freq = tx_freq
-        self.limesdr_sink_0.set_center_freq(self.tx_freq, 0)
-        self.limesdr_source_0.set_center_freq(self.tx_freq, 0)
 
     def get_tun_gain(self):
         return self.tun_gain
 
     def set_tun_gain(self, tun_gain):
         self.tun_gain = tun_gain
-        self.limesdr_sink_0.set_gain(self.tun_gain, 0)
-        self.limesdr_sink_0.set_gain(self.tun_gain, 1)
 
     def get_sync_word(self):
         return self.sync_word
@@ -777,12 +707,7 @@ class deepwive_tx_ofdm_custom(gr.top_block, Qt.QWidget):
 
     def set_samp_rate(self, samp_rate):
         self.samp_rate = samp_rate
-        self.limesdr_sink_0.set_digital_filter(self.samp_rate, 0)
-        self.limesdr_sink_0.set_digital_filter(self.samp_rate, 1)
-        self.limesdr_source_0.set_digital_filter(self.samp_rate, 0)
-        self.limesdr_source_0.set_digital_filter(self.samp_rate, 1)
         self.qtgui_freq_sink_x_0.set_frequency_range(0, self.samp_rate)
-        self.qtgui_freq_sink_x_0_0.set_frequency_range(0, self.samp_rate)
         self.qtgui_time_sink_x_0.set_samp_rate(self.samp_rate)
         self.qtgui_time_sink_x_1.set_samp_rate(self.samp_rate)
         self.qtgui_time_sink_x_2_0.set_samp_rate(self.samp_rate)
@@ -797,8 +722,6 @@ class deepwive_tx_ofdm_custom(gr.top_block, Qt.QWidget):
 
     def set_rx_gain(self, rx_gain):
         self.rx_gain = rx_gain
-        self.limesdr_source_0.set_gain(self.rx_gain, 0)
-        self.limesdr_source_0.set_gain(self.rx_gain, 1)
 
     def get_rolloff(self):
         return self.rolloff
@@ -854,6 +777,13 @@ class deepwive_tx_ofdm_custom(gr.top_block, Qt.QWidget):
     def set_cp_len(self, cp_len):
         self.cp_len = cp_len
         self.blocks_moving_average_xx_0.set_length_and_scale(48+self.cp_len, 1)
+
+    def get_ch_noise(self):
+        return self.ch_noise
+
+    def set_ch_noise(self, ch_noise):
+        self.ch_noise = ch_noise
+        self.channels_channel_model_0.set_noise_voltage(self.ch_noise)
 
 
 

@@ -176,31 +176,10 @@ namespace gr {
 
         // process header
         if (d_current_symbol == 2) {
-          // extract_from_header(bits);
-          extract_from_header_cc(bits);
+          extract_from_header(bits);
+          dout << "snr " << get_snr() - 20 << " dB" << std::endl;
+          // extract_from_header_cc(bits);
 
-          // add_item_tag(0,
-          //              nitems_written(0) + o,
-          //              pmt::intern("packet_len"),
-          //              pmt::from_long(d_packet_len));
-          // add_item_tag(0,
-          //              nitems_written(0) + o,
-          //              pmt::intern("first_flag"),
-          //              pmt::from_uint64(d_first_flag));
-          // add_item_tag(0,
-          //              nitems_written(0) + o,
-          //              pmt::intern("alloc_idx"),
-          //              pmt::from_uint64(d_alloc_idx));
-          // add_item_tag(0,
-          //              nitems_written(0) + o,
-          //              pmt::intern("snr"),
-          //              pmt::from_double(get_snr()));
-
-          // std::vector<gr_complex> csi = get_csi();
-          // add_item_tag(0,
-          //              nitems_written(0) + o,
-          //              pmt::intern("csi"),
-          //              pmt::init_c32vector(csi.size(), csi));
         }
 
         if (d_current_symbol > 2){
@@ -237,6 +216,65 @@ namespace gr {
 
       consume(0, i);
       return o;
+    }
+
+    void ofdm_frame_equalizer_impl::equalize(gr_complex* in,
+                                             int n,
+                                             gr_complex* symbols,
+                                             uint8_t* bits)
+    {
+      // NOTE this code assumes BPSK header
+
+      if (n == 0) {
+        std::memcpy(d_H, in, 64 * sizeof(gr_complex));
+      }
+      else if (n == 1) {
+        double signal = 0;
+        double noise = 0;
+        for (int i = 0; i < 64; i++){
+          if ((i == 32) || (i < 6) || (i > 58)) {
+            continue;
+          }
+          noise += std::pow(std::abs(d_H[i] - in[i]), 2);
+          signal += std::pow(std::abs(d_H[i] + in[i]), 2);
+          d_H[i] += in[i];
+          d_H[i] /= LONG[i] * gr_complex(2, 0);
+        }
+
+        d_snr = 10 * std::log10(signal / noise / 2);
+      }
+      else if (n == 2) {
+        int c = 0;
+        for (int i = 0; i < 64; i++) {
+          if ((i == 11) || (i == 25) || (i == 32) || (i == 39) || (i == 53) ||
+              (i < 6) || (i > 58)) {
+            continue;
+          }
+          else {
+            symbols[c] = in[i] / d_H[i];
+            bits[c] = (real(symbols[c]) > 0);
+
+            gr_complex point = gr_complex(2 * ((int)bits[c]) - 1, 0);
+            d_H[i] = gr_complex(1 - alpha, 0) * d_H[i] +
+                     gr_complex(alpha, 0) * (in[i] / point);
+
+            c++;
+          }
+        }
+      }
+      else {
+        int c = 0;
+        for (int i = 0; i < 64; i++) {
+          if ((i == 11) || (i == 25) || (i == 32) || (i == 39) || (i == 53) ||
+              (i < 6) || (i > 58)) {
+            continue;
+          }
+          else {
+            symbols[c] = in[i] / d_H[i];
+            c++;
+          }
+        }
+      }
     }
 
     void ofdm_frame_equalizer_impl::extract_from_header_cc(uint8_t* bits)
@@ -593,62 +631,6 @@ namespace gr {
           d_ppresult[j][i] = 0;
         }
       }
-    }
-
-    void ofdm_frame_equalizer_impl::equalize(gr_complex* in,
-                                             int n,
-                                             gr_complex* symbols,
-                                             uint8_t* bits)
-    {
-      // NOTE this code assumes BPSK header
-
-      if (n == 0) {
-        std::memcpy(d_H, in, 64 * sizeof(gr_complex));
-      }
-      else if (n == 1) {
-        double signal = 0;
-        double noise = 0;
-        for (int i = 0; i < 64; i++){
-          if ((i == 32) || (i < 6) || (i > 58)) {
-            continue;
-          }
-          noise += std::pow(std::abs(d_H[i] - in[i]), 2);
-          signal += std::pow(std::abs(d_H[i] + in[i]), 2);
-          d_H[i] += in[i];
-          d_H[i] /= LONG[i] * gr_complex(2, 0);
-        }
-
-        d_snr = 10 * std::log10(signal / noise / 2);
-      }
-      else if (n == 2) {
-        int c = 0;
-        for (int i = 0; i < 64; i++) {
-          if ((i == 11) || (i == 25) || (i == 32) || (i == 39) || (i == 53) ||
-              (i < 6) || (i > 58)) {
-            continue;
-          } else {
-            symbols[c] = in[i] / d_H[i];
-            bits[c] = (real(symbols[c]) > 0);
-            gr_complex point = gr_complex(2 * ((int)bits[c]) - 1, 0);
-            d_H[i] = gr_complex(1 - alpha, 0) * d_H[i] +
-                     gr_complex(alpha, 0) * (in[i] / point);
-            c++;
-          }
-        }
-      }
-      else {
-        int c = 0;
-        for (int i = 0; i < 64; i++) {
-          if ((i == 11) || (i == 25) || (i == 32) || (i == 39) || (i == 53) ||
-              (i < 6) || (i > 58)) {
-            continue;
-          } else {
-            symbols[c] = in[i] / d_H[i];
-            c++;
-          }
-        }
-      }
-     
     }
 
     double ofdm_frame_equalizer_impl::get_snr() { return d_snr; }
