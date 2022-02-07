@@ -263,7 +263,8 @@ class deepwive_v1_source(gr.sync_block):
         self.ssf_levels = 5
 
         self.video_frames = self._get_video_frames(source_fn)
-        self.video_frames = self.video_frames[:125]  # FIXME remove this in final version
+        self.n_frames = ((len(self.video_frames) - 1) // 4) * 4 + 1
+        self.video_frames = self.video_frames[:self.n_frames]
 
         self.gop_idx = -1
         self.n_gops = (len(self.video_frames) - 1) // (self.gop_size - 1)

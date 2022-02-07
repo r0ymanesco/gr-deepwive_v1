@@ -91,8 +91,8 @@ namespace gr {
       gr_complex symbols[48];
       gr_complex current_symbol[64];
 
-      dout << "FRAME EQUALIZER: input " << ninput_items[0] << "  output " << noutput_items
-         << std::endl;
+      // dout << "FRAME EQUALIZER: input " << ninput_items[0] << "  output " << noutput_items
+      //    << std::endl;
 
       while ((i < ninput_items[0]) && (o < noutput_items)){
         get_tags_in_window(tags, 0, i, i+1, pmt::string_to_symbol("data_start"));
@@ -115,7 +115,7 @@ namespace gr {
           // dout << "epsilon: " << d_epsilon0 << std::endl;
         }
         else if (d_payload_symbols > d_packet_len) {
-          dout << "not interesting; skip" << std::endl;
+          // dout << "not interesting; skip" << std::endl;
           i++;
           continue;
         }
@@ -177,8 +177,9 @@ namespace gr {
         // process header
         if (d_current_symbol == 2) {
           extract_from_header(bits);
-          dout << "snr " << get_snr() - 20 << " dB" << std::endl;
           // extract_from_header_cc(bits);
+
+          dout << "snr " << get_snr() - 20 << " dB" << std::endl;
 
         }
 
@@ -680,20 +681,30 @@ namespace gr {
       // d_alloc_idx = header_alloc_idx[0];
 
       d_first_flag = ((header_first_flag[0] & header_first_flag[1])
-                      | (header_first_flag[0] & header_first_flag[2])
-                      | (header_first_flag[0] & header_first_flag[3])
                       | (header_first_flag[1] & header_first_flag[2])
-                      | (header_first_flag[1] & header_first_flag[3])
-                      | (header_first_flag[2] & header_first_flag[3])
+                      | (header_first_flag[0] & header_first_flag[2])
       );
 
       d_alloc_idx = ((header_alloc_idx[0] & header_alloc_idx[1])
-                     | (header_alloc_idx[0] & header_alloc_idx[2])
-                     | (header_alloc_idx[0] & header_alloc_idx[3])
                      | (header_alloc_idx[1] & header_alloc_idx[2])
-                     | (header_alloc_idx[1] & header_alloc_idx[3])
-                     | (header_alloc_idx[2] & header_alloc_idx[3])
+                     | (header_alloc_idx[0] & header_alloc_idx[2])
       );
+
+      // d_first_flag = ((header_first_flag[0] & header_first_flag[1])
+      //                 | (header_first_flag[0] & header_first_flag[2])
+      //                 | (header_first_flag[0] & header_first_flag[3])
+      //                 | (header_first_flag[1] & header_first_flag[2])
+      //                 | (header_first_flag[1] & header_first_flag[3])
+      //                 | (header_first_flag[2] & header_first_flag[3])
+      // );
+
+      // d_alloc_idx = ((header_alloc_idx[0] & header_alloc_idx[1])
+      //                | (header_alloc_idx[0] & header_alloc_idx[2])
+      //                | (header_alloc_idx[0] & header_alloc_idx[3])
+      //                | (header_alloc_idx[1] & header_alloc_idx[2])
+      //                | (header_alloc_idx[1] & header_alloc_idx[3])
+      //                | (header_alloc_idx[2] & header_alloc_idx[3])
+      // );
 
       dout << "first flag " << d_first_flag << " alloc idx " << d_alloc_idx << std::endl;
     }

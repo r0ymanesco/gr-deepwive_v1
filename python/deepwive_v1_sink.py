@@ -226,8 +226,8 @@ class deepwive_v1_sink(gr.basic_block):
         self.ssf_levels = 5
 
         self.video_frames = self._get_video_frames(source_fn)
-        self.video_frames = self.video_frames[:125]  # FIXME remove this in final version
-        self.n_frames = len(self.video_frames)
+        self.n_frames = ((len(self.video_frames) - 1) // 4) * 4 + 1
+        self.video_frames = self.video_frames[:self.n_frames]
         self.window_name = 'video_stream'
         self._open_window(self.frame_shape[3], self.frame_shape[2], self.window_name)
 
