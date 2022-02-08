@@ -263,7 +263,9 @@ class deepwive_v1_source(gr.sync_block):
         self.ssf_levels = 5
 
         self.video_frames = self._get_video_frames(source_fn)
-        self.video_frames = self.video_frames[:125]  # FIXME remove this in final version
+        self.n_frames = ((len(self.video_frames) - 1) // 4) * 4 + 1
+        self.video_frames = self.video_frames[:self.n_frames]
+        print('n source frames {}'.format(self.n_frames))
 
         self.gop_idx = -1
         self.n_gops = (len(self.video_frames) - 1) // (self.gop_size - 1)
@@ -593,7 +595,7 @@ class deepwive_v1_source(gr.sync_block):
 
         while payload_idx < len(payload_out):
 
-            if self.pair_idx % (self.ch_uses + (48 * self.n_packets)) == 0:
+            if self.pair_idx % self.ch_uses == 0:
                 self._reset()
 
             if self.packets is None:
@@ -601,34 +603,38 @@ class deepwive_v1_source(gr.sync_block):
                     codeword = self._key_frame_encode(self.video_frames[0], self.snr)
                     codeword = codeword.reshape(-1, 2)
                     codeword = np.concatenate((codeword.reshape(-1, 2), np.zeros((self.n_padding, 2))), axis=0)
-                    first = 1.
-                    curr_bw_allocation = None
+                    self.first = 1.
+                    self.curr_bw_allocation = (2**11) - 1
                 else:
                     curr_gop = self.video_frames[self.gop_idx*(self.gop_size-1)
                                                  :(self.gop_idx+1)*(self.gop_size-1)+1]
-                    codeword, curr_bw_allocation = self._encode_gop(curr_gop)
+                    codeword, self.curr_bw_allocation = self._encode_gop(curr_gop)
                     codeword = np.concatenate((codeword.reshape(-1, 2), np.zeros((self.n_padding, 2))), axis=0)
-                    first = 0.
+                    self.first = 0.
 
-                self.packets = np.vsplit(codeword * 0.1, self.n_packets)
+                codeword *= 0.1
+                self.packets = np.vsplit(codeword, self.n_packets)
 
-                if first:
-                    allocation_bits = [1] * 11
-                    allocation_bits = [np.float(b) for b in allocation_bits]
-                else:
-                    allocation_bits = '{0:011b}'.format(curr_bw_allocation)
-                    allocation_bits = [np.float(b) for b in allocation_bits]
-                    allocation_bits = allocation_bits[::-1]
+                # if first:
+                #     allocation_bits = [1] * 11
+                #     allocation_bits = [np.float(b) for b in allocation_bits]
+                # else:
+                #     allocation_bits = '{0:011b}'.format(curr_bw_allocation)
+                #     allocation_bits = [np.float(b) for b in allocation_bits]
+                #     allocation_bits = allocation_bits[::-1]
 
-                header_bits = 2 * np.array(([first] + allocation_bits) * 4) - 1
-                self.header_bits = np.stack((header_bits, np.zeros_like(header_bits)), axis=1)
-                assert header_bits.shape[0] == 48  # NOTE this is equal to n_occupied_carriers
+                # header_bits = 2 * np.array(([first] + allocation_bits) * 4) - 1
+                # self.header_bits = np.stack((header_bits, np.zeros_like(header_bits)), axis=1)
+                # assert header_bits.shape[0] == 48  # NOTE this is equal to n_occupied_carriers
 
-            if self.pair_idx % (self.packet_len + 48) == 0:
-                # self.add_item_tag(0, payload_idx + self.nitems_written(0),
-                #                   pmt.intern('packet_len'), pmt.from_long(self.packet_len + 48))
+            if self.pair_idx % self.packet_len == 0:
+                self.add_item_tag(0, payload_idx + self.nitems_written(0),
+                                  pmt.intern('first_flag'), pmt.from_long(int(self.first)))
+                self.add_item_tag(0, payload_idx + self.nitems_written(0),
+                                  pmt.intern('alloc_idx'), pmt.from_long(int(self.curr_bw_allocation)))
 
-                self.curr_packet = np.concatenate((self.header_bits, self.packets[self.packet_idx]), axis=0)
+                # self.curr_packet = np.concatenate((self.header_bits, self.packets[self.packet_idx]), axis=0)
+                self.curr_packet = self.packets[self.packet_idx]
                 # print('tx first {}, alloc {}'.format(first, curr_bw_allocation))
 
                 self.packet_idx += 1

@@ -8,7 +8,7 @@ templates:
     deepwive_v1.deepwive_v1_sink(${source_fn}, ${model_cout},
     ${key_decoder_fn}, ${interp_decoder_fn},
     ${packet_len}, ${snr}, ${num_chunks}, ${gop_size}, ${patience},
-    ${use_fp16})
+    ${plot_performance}, ${use_fp16})
 
 #  Make one 'parameters' list entry for every parameter you want settable from the GUI.
 #     Keys include:
@@ -51,6 +51,10 @@ parameters:
 - id: patience
   label: Init Patience
   dtype: int
+
+- id: plot_performance
+  label: Plot SNR v PSNR
+  dtype: bool
 
 - id: use_fp16
   label: Use FP16 precision

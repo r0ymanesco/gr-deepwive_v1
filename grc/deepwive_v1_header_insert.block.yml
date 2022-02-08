@@ -1,23 +1,30 @@
-id: deepwive_v1_deepwive_packet_header
-label: deepwive_packet_header
+id: deepwive_v1_header_insert
+label: Header Insert
 category: '[deepwive_v1]'
 
 templates:
   imports: import deepwive_v1
-  make: deepwive_v1.deepwive_packet_header(${occupied_carriers}, ${n_syms}, ${len_tag_key}, ${frame_len_tag_key}, ${num_tag_key}, ${bits_per_header_sym}, ${bits_per_payload_sym}, ${scramble_header})
+  make: |-
+    deepwive_v1.header_insert(${packet_len}, ${length_tag_key}, ${debug})
 
 #  Make one 'parameters' list entry for every parameter you want settable from the GUI.
 #     Keys include:
 #     * id (makes the value accessible as \$keyname, e.g. in the make entry)
 #     * label (label shown in the GUI)
 #     * dtype (e.g. int, float, complex, byte, short, xxx_vector, ...)
-# parameters:
-# - id: ...
-#   label: ...
-#   dtype: ...
-# - id: ...
-#   label: ...
-#   dtype: ...
+parameters:
+-   id: packet_len
+    label: Packet Length
+    dtype: int
+-   id: length_tag_key
+    label: Length Tag Key
+    dtype: string
+-   id: debug
+    label: Debug
+    dtype: bool
+    default: 'False'
+    options: ['True', 'False']
+    option_labels: [Enable, Disable]
 
 #  Make one 'inputs' list entry per input and one 'outputs' list entry per output.
 #  Keys include:
@@ -26,19 +33,15 @@ templates:
 #      * dtype (e.g. int, float, complex, byte, short, xxx_vector, ...)
 #      * vlen (optional - data stream vector length. Default is 1)
 #      * optional (optional - set to 1 for optional inputs. Default is 0)
-# inputs:
-# - label: ...
-#   domain: ...
-#   dtype: ...
-#   vlen: ...
-#   optional: ...
+inputs:
+-   domain: stream
+    dtype: complex
+    multiplicity: '1'
 
-# outputs:
-# - label: ...
-#   domain: ...
-#   dtype: ...
-#   vlen: ...
-#   optional: ...
+outputs:
+-   domain: stream
+    dtype: complex
+    multiplicity: '1'
 
 #  'file_format' specifies the version of the GRC yml format used in the file
 #  and should usually not be changed.

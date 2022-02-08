@@ -23,12 +23,10 @@
 ########################################################################
 include(GrPlatform) #define LIB_SUFFIX
 list(APPEND deepwive_v1_sources
-    soft_equalizer_single_tap.cc
-    deepwive_packet_header.cc
-    header_format.cc
     ofdm_sync_short.cc
     ofdm_sync_long.cc
-    ofdm_frame_equalizer_impl.cc )
+    ofdm_frame_equalizer_impl.cc
+    header_insert.cc )
 
 set(deepwive_v1_sources "${deepwive_v1_sources}" PARENT_SCOPE)
 if(NOT deepwive_v1_sources)

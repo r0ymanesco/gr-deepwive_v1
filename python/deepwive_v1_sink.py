@@ -23,6 +23,8 @@ import cv2
 import math
 import time
 import numbers
+from pylab import plot, scatter, show, xlabel, ylabel
+from drawnow import drawnow, figure
 import numpy as np
 import ipdb
 
@@ -190,7 +192,8 @@ class deepwive_v1_sink(gr.basic_block):
 
     def __init__(self, source_fn, model_cout,
                  key_decoder_fn, interp_decoder_fn,
-                 packet_len=96, snr=20, num_chunks=20, gop_size=5, patience=0, use_fp16=False):
+                 packet_len=96, snr=20, num_chunks=20, gop_size=5, patience=0,
+                 plot_performance=False, use_fp16=False):
         gr.sync_block.__init__(self,
                                name="deepwive_v1_sink",
                                in_sig=None,
@@ -214,6 +217,7 @@ class deepwive_v1_sink(gr.basic_block):
         self.packet_len = packet_len
         self.snr = np.array([[snr]], dtype=self.target_dtype)
         self.use_fp16 = use_fp16
+        self.plot_performance = plot_performance
 
         self._get_runtime(trt.Logger(trt.Logger.WARNING))
         self.key_decoder = self._get_context(key_decoder_fn)
@@ -226,8 +230,9 @@ class deepwive_v1_sink(gr.basic_block):
         self.ssf_levels = 5
 
         self.video_frames = self._get_video_frames(source_fn)
-        self.video_frames = self.video_frames[:125]  # FIXME remove this in final version
-        self.n_frames = len(self.video_frames)
+        self.n_frames = ((len(self.video_frames) - 1) // 4) * 4 + 1
+        self.video_frames = self.video_frames[:self.n_frames]
+        print('n sink frames {}'.format(self.n_frames))
         self.window_name = 'video_stream'
         self._open_window(self.frame_shape[3], self.frame_shape[2], self.window_name)
 
@@ -236,7 +241,8 @@ class deepwive_v1_sink(gr.basic_block):
         self._allocate_memory()
         self._get_bw_set()
 
-        self._gop_reset()
+        self.psnr_hist = []
+        self.snr_hist = []
         self._video_reset()
 
     def _get_runtime(self, logger):
@@ -284,6 +290,9 @@ class deepwive_v1_sink(gr.basic_block):
         cv2.resizeWindow(window_name, width, height)
         cv2.moveWindow(window_name, 0, 0)
         cv2.setWindowTitle(window_name, window_name)
+
+        if self.plot_performance:
+            self.snr_fig = figure(figsize=(7, 7))
 
     def _get_gaussian_kernels(self):
         self.g_kernels = []
@@ -413,6 +422,16 @@ class deepwive_v1_sink(gr.basic_block):
 
         return (self.first_count == self.n_packets)
 
+    def _calc_psnr(self, prediction, target):
+        psnr = 10 * np.log10((255.**2) / np.mean((prediction - target) ** 2))
+        return psnr
+
+    def _draw_psnr_fig(self):
+        xlabel('SNR (dB)')
+        ylabel('PSNR (dB)')
+        plot(self.snr_hist, self.psnr_hist, 'r.')
+        show()
+
     def msg_handler(self, msg_pmt):
         tags = pmt.to_python(pmt.car(msg_pmt))
         payload_in = pmt.to_python(pmt.cdr(msg_pmt))
@@ -429,8 +448,9 @@ class deepwive_v1_sink(gr.basic_block):
 
         first_flag = bool(tags['first_flag'])
         self.first_buffer.append(first_flag)
-        # print(first_flag)
         detect_first = self._first_frame_detection(first_flag)
+
+        self.snr_buffer.append(float(tags['snr']))
 
         if False:
             print('first {} alloc {}'.format(first_flag, alloc_idx))
@@ -446,10 +466,14 @@ class deepwive_v1_sink(gr.basic_block):
             codeword = np.ascontiguousarray(codeword, dtype=self.target_dtype).reshape(self.codeword_shape)
             codeword = codeword / 0.1
 
-            if detect_first:
+            if detect_first or self.frame_counter >= self.n_frames:
+                # print('reset')
                 self._video_reset()
+                # if len(self.psnr_hist) > 0:
+                #     print('reset')
+                #     self._video_reset()
 
-                decoded_frames = self._decode_gop(codeword, alloc_idx, first=detect_first)
+                decoded_frames = self._decode_gop(codeword, alloc_idx, first=True)
                 self.first_received = True
 
             elif self.first_received:
@@ -457,29 +481,45 @@ class deepwive_v1_sink(gr.basic_block):
                     raise Exception
 
                 alloc_idx = self._majority_decode()
-                # print('first {} alloc {}'.format(first_flag, alloc_idx))
                 decoded_frames = self._decode_gop(codeword, alloc_idx, init_frame=self.prev_last)
 
             self.prev_last = decoded_frames[-1]
-            self.frame_buffer.extend(decoded_frames)
 
-            for frame in decoded_frames:
+            for i, frame in enumerate(decoded_frames):
                 cv2.imshow(self.window_name, to_np_img(frame))
 
                 if cv2.waitKey(1) == 13:
                     cv2.destroyAllWindows()
 
+                # print('frame idx: {}/{}'.format(self.frame_counter, self.n_frames))
+                if self.plot_performance:
+                    psnr = self._calc_psnr(to_np_img(frame), to_np_img(self.video_frames[self.frame_counter]))
+                    self.psnr_hist.append(psnr)
+                    self.snr_hist.append(np.mean(self.snr_buffer[i:]))
+                    assert len(self.psnr_hist) == len(self.snr_hist)
+                    drawnow(self._draw_psnr_fig)
+
+                self.frame_counter += 1
+
+            self.frame_buffer.extend(decoded_frames)
             self._gop_reset()
 
     def _gop_reset(self):
         self.first_count = 0
         self.errs = 0
         self.curr_frame_packets = []
-        self.frame_buffer = []
         self.first_buffer = []
         self.alloc_buffer = []
+        self.snr_buffer = []
 
     def _video_reset(self):
         self._gop_reset()
+        self.frame_counter = 0
+        self.frame_buffer = []
         self.prev_last = None
         self.first_received = False
+
+        N = 1000
+        if len(self.psnr_hist) > N:
+            self.psnr_hist = self.psnr_hist[-N:]
+            self.snr_hist = self.snr_hist[-N:]
