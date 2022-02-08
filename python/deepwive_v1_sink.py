@@ -192,7 +192,8 @@ class deepwive_v1_sink(gr.basic_block):
 
     def __init__(self, source_fn, model_cout,
                  key_decoder_fn, interp_decoder_fn,
-                 packet_len=96, snr=20, num_chunks=20, gop_size=5, patience=0, use_fp16=False):
+                 packet_len=96, snr=20, num_chunks=20, gop_size=5, patience=0,
+                 plot_performance=False, use_fp16=False):
         gr.sync_block.__init__(self,
                                name="deepwive_v1_sink",
                                in_sig=None,
@@ -216,6 +217,7 @@ class deepwive_v1_sink(gr.basic_block):
         self.packet_len = packet_len
         self.snr = np.array([[snr]], dtype=self.target_dtype)
         self.use_fp16 = use_fp16
+        self.plot_performance = plot_performance
 
         self._get_runtime(trt.Logger(trt.Logger.WARNING))
         self.key_decoder = self._get_context(key_decoder_fn)
@@ -289,7 +291,8 @@ class deepwive_v1_sink(gr.basic_block):
         cv2.moveWindow(window_name, 0, 0)
         cv2.setWindowTitle(window_name, window_name)
 
-        self.snr_fig = figure(figsize=(7, 7))
+        if self.plot_performance:
+            self.snr_fig = figure(figsize=(7, 7))
 
     def _get_gaussian_kernels(self):
         self.g_kernels = []
@@ -464,7 +467,7 @@ class deepwive_v1_sink(gr.basic_block):
             codeword = codeword / 0.1
 
             if detect_first or self.frame_counter >= self.n_frames:
-                print('reset')
+                # print('reset')
                 self._video_reset()
                 # if len(self.psnr_hist) > 0:
                 #     print('reset')
@@ -489,11 +492,13 @@ class deepwive_v1_sink(gr.basic_block):
                     cv2.destroyAllWindows()
 
                 # print('frame idx: {}/{}'.format(self.frame_counter, self.n_frames))
-                psnr = self._calc_psnr(to_np_img(frame), to_np_img(self.video_frames[self.frame_counter]))
-                self.psnr_hist.append(psnr)
-                self.snr_hist.append(np.mean(self.snr_buffer[i:]))
-                assert len(self.psnr_hist) == len(self.snr_hist)
-                drawnow(self._draw_psnr_fig)
+                if self.plot_performance:
+                    psnr = self._calc_psnr(to_np_img(frame), to_np_img(self.video_frames[self.frame_counter]))
+                    self.psnr_hist.append(psnr)
+                    self.snr_hist.append(np.mean(self.snr_buffer[i:]))
+                    assert len(self.psnr_hist) == len(self.snr_hist)
+                    drawnow(self._draw_psnr_fig)
+
                 self.frame_counter += 1
 
             self.frame_buffer.extend(decoded_frames)

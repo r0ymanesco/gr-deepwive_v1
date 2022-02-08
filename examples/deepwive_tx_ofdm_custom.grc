@@ -43,7 +43,7 @@ blocks:
     rangeType: float
     start: '0.1'
     step: '0.1'
-    stop: '1.0'
+    stop: '10.0'
     value: '0.4'
     widget: counter_slider
   states:
@@ -619,6 +619,7 @@ blocks:
     num_chunks: '20'
     packet_len: packet_len
     patience: '0'
+    plot_performance: 'False'
     snr: '20'
     source_fn: '''/home/tt2114/workspace/gr-deepwive_v1/examples/test_files/v_YoYo_g25_c05.avi'''
     use_fp16: 'False'
@@ -680,7 +681,7 @@ blocks:
     alias: ''
     bw: samp_rate
     comment: ''
-    debug: 'False'
+    debug: 'True'
     freq: tx_freq
     log: 'False'
     maxoutbuf: '0'
