@@ -201,7 +201,7 @@ namespace gr {
           dict = pmt::dict_add(
             dict, pmt::mp("alloc_idx"), pmt::from_long(d_alloc_idx));
           dict = pmt::dict_add(
-            dict, pmt::mp("snr"), pmt::from_double(get_snr()));
+            dict, pmt::mp("snr"), pmt::from_double(get_snr() - 20));
 
           message_port_pub(
             pmt::mp("payload_IQ"),
