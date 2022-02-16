@@ -78,26 +78,34 @@ class deepwive_tx_ofdm_custom(gr.top_block, Qt.QWidget):
         # Variables
         ##################################################
         self.fft_len = fft_len = 64
-        self.tx_freq = tx_freq = 1e9
+        self.tx_freq = tx_freq = 446094000
+        self.tun_gain = tun_gain = 50
         self.sync_word = sync_word = ((0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, (1.4719601443879746+1.4719601443879746j), 0.0, 0.0, 0.0, (-1.4719601443879746-1.4719601443879746j), 0.0, 0.0, 0.0, (1.4719601443879746+1.4719601443879746j), 0.0, 0.0, 0.0, (-1.4719601443879746-1.4719601443879746j), 0.0, 0.0, 0.0, (-1.4719601443879746-1.4719601443879746j), 0.0, 0.0, 0.0, (1.4719601443879746+1.4719601443879746j), 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, (-1.4719601443879746-1.4719601443879746j), 0.0, 0.0, 0.0, (-1.4719601443879746-1.4719601443879746j), 0.0, 0.0, 0.0, (1.4719601443879746+1.4719601443879746j), 0.0, 0.0, 0.0, (1.4719601443879746+1.4719601443879746j), 0.0, 0.0, 0.0, (1.4719601443879746+1.4719601443879746j), 0.0, 0.0, 0.0, (1.4719601443879746+1.4719601443879746j), 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0), (0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, (1.4719601443879746+1.4719601443879746j), 0.0, 0.0, 0.0, (-1.4719601443879746-1.4719601443879746j), 0.0, 0.0, 0.0, (1.4719601443879746+1.4719601443879746j), 0.0, 0.0, 0.0, (-1.4719601443879746-1.4719601443879746j), 0.0, 0.0, 0.0, (-1.4719601443879746-1.4719601443879746j), 0.0, 0.0, 0.0, (1.4719601443879746+1.4719601443879746j), 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, (-1.4719601443879746-1.4719601443879746j), 0.0, 0.0, 0.0, (-1.4719601443879746-1.4719601443879746j), 0.0, 0.0, 0.0, (1.4719601443879746+1.4719601443879746j), 0.0, 0.0, 0.0, (1.4719601443879746+1.4719601443879746j), 0.0, 0.0, 0.0, (1.4719601443879746+1.4719601443879746j), 0.0, 0.0, 0.0, (1.4719601443879746+1.4719601443879746j), 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0), (0, 0j, 0, 0j, 0, 0j, -1, 1j, -1, 1j, -1, 1j, -1, -1j, 1, 1j, 1, -1j, -1, 1j, 1, 1j, 1, 1j, 1, 1j, -1, (-0-1j), 1, -1j, -1, 1j, 0, -1j, 1, (-0-1j), 1, -1j, 1, 1j, -1, -1j, 1, (-0-1j), -1, 1j, 1, 1j, 1, 1j, 1, 1j, -1, -1j, 1, 1j, 1, -1j, -1, 0j, 0, 0j, 0, 0j), (0, 0, 0, 0, 0, 0, 1, 1, -1, -1, 1, 1, -1, 1, -1, 1, 1, 1, 1, 1, 1, -1, -1, 1, 1, -1, 1, -1, 1, 1, 1, 1, 0, 1, -1, -1, 1, 1, -1, 1, -1, 1, -1, -1, -1, -1, -1, 1, 1, -1, -1, 1, -1, 1, -1, 1, 1, 1, 1, 0, 0, 0, 0, 0))
-        self.samp_rate = samp_rate = int(30e6)
+        self.samp_rate = samp_rate = int(2.5e6)
+        self.rx_gain = rx_gain = 40
         self.rolloff = rolloff = 0
         self.pilot_symbols = pilot_symbols = ((1, 1, 1, -1), (1, 1, 1, -1), (1, 1, 1, -1), (1, 1, 1, -1), (-1, -1, -1, 1), (-1, -1, -1, 1), (-1, -1, -1, 1), (1, 1, 1, -1), (-1, -1, -1, 1), (-1, -1, -1, 1), (-1, -1, -1, 1), (-1, -1, -1, 1), (1, 1, 1, -1), (1, 1, 1, -1), (-1, -1, -1, 1), (1, 1, 1, -1), (-1, -1, -1, 1), (-1, -1, -1, 1), (1, 1, 1, -1), (1, 1, 1, -1), (-1, -1, -1, 1), (1, 1, 1, -1), (1, 1, 1, -1), (-1, -1, -1, 1), (1, 1, 1, -1), (1, 1, 1, -1), (1, 1, 1, -1), (1, 1, 1, -1), (1, 1, 1, -1), (1, 1, 1, -1), (-1, -1, -1, 1), (1, 1, 1, -1), (1, 1, 1, -1), (1, 1, 1, -1), (-1, -1, -1, 1), (1, 1, 1, -1), (1, 1, 1, -1), (-1, -1, -1, 1), (-1, -1, -1, 1), (1, 1, 1, -1), (1, 1, 1, -1), (1, 1, 1, -1), (-1, -1, -1, 1), (1, 1, 1, -1), (-1, -1, -1, 1), (-1, -1, -1, 1), (-1, -1, -1, 1), (1, 1, 1, -1), (-1, -1, -1, 1), (1, 1, 1, -1), (-1, -1, -1, 1), (-1, -1, -1, 1), (1, 1, 1, -1), (-1, -1, -1, 1), (-1, -1, -1, 1), (1, 1, 1, -1), (1, 1, 1, -1), (1, 1, 1, -1), (1, 1, 1, -1), (1, 1, 1, -1), (-1, -1, -1, 1), (-1, -1, -1, 1), (1, 1, 1, -1), (1, 1, 1, -1), (-1, -1, -1, 1), (-1, -1, -1, 1), (1, 1, 1, -1), (-1, -1, -1, 1), (1, 1, 1, -1), (-1, -1, -1, 1), (1, 1, 1, -1), (1, 1, 1, -1), (-1, -1, -1, 1), (-1, -1, -1, 1), (-1, -1, -1, 1), (1, 1, 1, -1), (1, 1, 1, -1), (-1, -1, -1, 1), (-1, -1, -1, 1), (-1, -1, -1, 1), (-1, -1, -1, 1), (1, 1, 1, -1), (-1, -1, -1, 1), (-1, -1, -1, 1), (1, 1, 1, -1), (-1, -1, -1, 1), (1, 1, 1, -1), (1, 1, 1, -1), (1, 1, 1, -1), (1, 1, 1, -1), (-1, -1, -1, 1), (1, 1, 1, -1), (-1, -1, -1, 1), (1, 1, 1, -1), (-1, -1, -1, 1), (1, 1, 1, -1), (-1, -1, -1, 1), (-1, -1, -1, 1), (-1, -1, -1, 1), (-1, -1, -1, 1), (-1, -1, -1, 1), (1, 1, 1, -1), (-1, -1, -1, 1), (1, 1, 1, -1), (1, 1, 1, -1), (-1, -1, -1, 1), (1, 1, 1, -1), (-1, -1, -1, 1), (1, 1, 1, -1), (1, 1, 1, -1), (1, 1, 1, -1), (-1, -1, -1, 1), (-1, -1, -1, 1), (1, 1, 1, -1), (-1, -1, -1, 1), (-1, -1, -1, 1), (-1, -1, -1, 1), (1, 1, 1, -1), (1, 1, 1, -1), (1, 1, 1, -1), (-1, -1, -1, 1), (-1, -1, -1, 1), (-1, -1, -1, 1), (-1, -1, -1, 1), (-1, -1, -1, 1), (-1, -1, -1, 1), (-1, -1, -1, 1))
         self.pilot_carriers = pilot_carriers = ((-21, -7, 7, 21), )
-        self.packet_len = packet_len = 1440
+        self.packet_len = packet_len = 720
         self.occupied_carriers = occupied_carriers = (list(range(-26, -21)) + list(range(-20, -7)) + list(range(-6, 0)) + list(range(1, 7)) + list(range(8, 21)) +list( range(22, 27)),)
         self.max_symbols = max_symbols = int(5 + 1 + ((16 + 800 * 8 + 6) * 2) / 24)
         self.length_tag_key = length_tag_key = "packet_len"
         self.frame_length_tag_key = frame_length_tag_key = "frame_len"
         self.cp_len = cp_len = fft_len // 4
-        self.ch_noise = ch_noise = 0.4
+        self.ch_noise = ch_noise = 0.1
 
         ##################################################
         # Blocks
         ##################################################
-        self._ch_noise_range = Range(0.1, 10.0, 0.1, 0.4, 200)
+        self._ch_noise_range = Range(0.1, 1.0, 0.1, 0.1, 200)
         self._ch_noise_win = RangeWidget(self._ch_noise_range, self.set_ch_noise, 'Channel noise', "counter_slider", float)
         self.top_layout.addWidget(self._ch_noise_win)
+        self._tun_gain_range = Range(0, 73, 1, 50, 200)
+        self._tun_gain_win = RangeWidget(self._tun_gain_range, self.set_tun_gain, 'Tx Gain (dB)', "counter_slider", int)
+        self.top_layout.addWidget(self._tun_gain_win)
+        self._rx_gain_range = Range(0, 73, 1, 40, 200)
+        self._rx_gain_win = RangeWidget(self._rx_gain_range, self.set_rx_gain, 'Rx Gain (dB)', "counter_slider", int)
+        self.top_layout.addWidget(self._rx_gain_win)
         self.qtgui_time_sink_x_2_0_0_0_3 = qtgui.time_sink_c(
             1024, #size
             samp_rate, #samp_rate
@@ -198,6 +206,93 @@ class deepwive_tx_ofdm_custom(gr.top_block, Qt.QWidget):
 
         self._qtgui_time_sink_x_2_0_0_0_0_0_win = sip.wrapinstance(self.qtgui_time_sink_x_2_0_0_0_0_0.pyqwidget(), Qt.QWidget)
         self.top_layout.addWidget(self._qtgui_time_sink_x_2_0_0_0_0_0_win)
+        self.qtgui_time_sink_x_1 = qtgui.time_sink_f(
+            1024, #size
+            samp_rate, #samp_rate
+            "", #name
+            1 #number of inputs
+        )
+        self.qtgui_time_sink_x_1.set_update_time(0.10)
+        self.qtgui_time_sink_x_1.set_y_axis(0, 1)
+
+        self.qtgui_time_sink_x_1.set_y_label('Amplitude', "")
+
+        self.qtgui_time_sink_x_1.enable_tags(True)
+        self.qtgui_time_sink_x_1.set_trigger_mode(qtgui.TRIG_MODE_FREE, qtgui.TRIG_SLOPE_POS, 0.0, 0, 0, "")
+        self.qtgui_time_sink_x_1.enable_autoscale(False)
+        self.qtgui_time_sink_x_1.enable_grid(False)
+        self.qtgui_time_sink_x_1.enable_axis_labels(True)
+        self.qtgui_time_sink_x_1.enable_control_panel(False)
+        self.qtgui_time_sink_x_1.enable_stem_plot(False)
+
+
+        labels = ['Signal 1', 'Signal 2', 'Signal 3', 'Signal 4', 'Signal 5',
+            'Signal 6', 'Signal 7', 'Signal 8', 'Signal 9', 'Signal 10']
+        widths = [1, 1, 1, 1, 1,
+            1, 1, 1, 1, 1]
+        colors = ['blue', 'red', 'green', 'black', 'cyan',
+            'magenta', 'yellow', 'dark red', 'dark green', 'dark blue']
+        alphas = [1.0, 1.0, 1.0, 1.0, 1.0,
+            1.0, 1.0, 1.0, 1.0, 1.0]
+        styles = [1, 1, 1, 1, 1,
+            1, 1, 1, 1, 1]
+        markers = [-1, -1, -1, -1, -1,
+            -1, -1, -1, -1, -1]
+
+
+        for i in range(1):
+            if len(labels[i]) == 0:
+                self.qtgui_time_sink_x_1.set_line_label(i, "Data {0}".format(i))
+            else:
+                self.qtgui_time_sink_x_1.set_line_label(i, labels[i])
+            self.qtgui_time_sink_x_1.set_line_width(i, widths[i])
+            self.qtgui_time_sink_x_1.set_line_color(i, colors[i])
+            self.qtgui_time_sink_x_1.set_line_style(i, styles[i])
+            self.qtgui_time_sink_x_1.set_line_marker(i, markers[i])
+            self.qtgui_time_sink_x_1.set_line_alpha(i, alphas[i])
+
+        self._qtgui_time_sink_x_1_win = sip.wrapinstance(self.qtgui_time_sink_x_1.pyqwidget(), Qt.QWidget)
+        self.top_layout.addWidget(self._qtgui_time_sink_x_1_win)
+        self.qtgui_freq_sink_x_0 = qtgui.freq_sink_c(
+            10240, #size
+            firdes.WIN_BLACKMAN_hARRIS, #wintype
+            0, #fc
+            samp_rate, #bw
+            'Tx FFT Plot', #name
+            1
+        )
+        self.qtgui_freq_sink_x_0.set_update_time(0.10)
+        self.qtgui_freq_sink_x_0.set_y_axis(-140, 10)
+        self.qtgui_freq_sink_x_0.set_y_label('Relative Gain', 'dB')
+        self.qtgui_freq_sink_x_0.set_trigger_mode(qtgui.TRIG_MODE_FREE, 0.0, 0, "")
+        self.qtgui_freq_sink_x_0.enable_autoscale(True)
+        self.qtgui_freq_sink_x_0.enable_grid(False)
+        self.qtgui_freq_sink_x_0.set_fft_average(1.0)
+        self.qtgui_freq_sink_x_0.enable_axis_labels(True)
+        self.qtgui_freq_sink_x_0.enable_control_panel(False)
+
+
+
+        labels = ['', '', '', '', '',
+            '', '', '', '', '']
+        widths = [1, 1, 1, 1, 1,
+            1, 1, 1, 1, 1]
+        colors = ["blue", "red", "green", "black", "cyan",
+            "magenta", "yellow", "dark red", "dark green", "dark blue"]
+        alphas = [1.0, 1.0, 1.0, 1.0, 1.0,
+            1.0, 1.0, 1.0, 1.0, 1.0]
+
+        for i in range(1):
+            if len(labels[i]) == 0:
+                self.qtgui_freq_sink_x_0.set_line_label(i, "Data {0}".format(i))
+            else:
+                self.qtgui_freq_sink_x_0.set_line_label(i, labels[i])
+            self.qtgui_freq_sink_x_0.set_line_width(i, widths[i])
+            self.qtgui_freq_sink_x_0.set_line_color(i, colors[i])
+            self.qtgui_freq_sink_x_0.set_line_alpha(i, alphas[i])
+
+        self._qtgui_freq_sink_x_0_win = sip.wrapinstance(self.qtgui_freq_sink_x_0.pyqwidget(), Qt.QWidget)
+        self.top_layout.addWidget(self._qtgui_freq_sink_x_0_win)
         self.qtgui_const_sink_x_1 = qtgui.const_sink_c(
             1024, #size
             "Tx constellation", #name
@@ -288,10 +383,10 @@ class deepwive_tx_ofdm_custom(gr.top_block, Qt.QWidget):
         self.deepwive_v1_ofdm_frame_equalizer_1 = deepwive_v1.ofdm_frame_equalizer(tx_freq, samp_rate, packet_len, False, True)
         self.deepwive_v1_header_insert_0 = deepwive_v1.header_insert(packet_len, length_tag_key, False)
         self.deepwive_v1_deepwive_v1_source_1 = deepwive_v1.deepwive_v1_source('/home/tt2114/workspace/gr-deepwive_v1/examples/test_files/v_YoYo_g25_c05.avi', 240,
-        '/home/tt2114/workspace/gr-deepwive_v1/examples/test_files/key_encoder_graph.trt', '/home/tt2114/workspace/gr-deepwive_v1/examples/test_files/interp_encoder_graph.trt', '/home/tt2114/workspace/gr-deepwive_v1/examples/test_files/ssf_net_graph.trt', '/home/tt2114/workspace/gr-deepwive_v1/examples/test_files/bw_allocator_graph.trt',
-        packet_len, 20., 20, 5, False)
+        '/home/tt2114/workspace/gr-deepwive_v1/examples/test_files/key_encoder.trt', '/home/tt2114/workspace/gr-deepwive_v1/examples/test_files/interp_encoder.trt', '/home/tt2114/workspace/gr-deepwive_v1/examples/test_files/ssf_net.trt', '/home/tt2114/workspace/gr-deepwive_v1/examples/test_files/bw_allocator.trt',
+        packet_len, 20., 20, 5, False, False)
         self.deepwive_v1_deepwive_v1_sink_0_1 = deepwive_v1.deepwive_v1_sink('/home/tt2114/workspace/gr-deepwive_v1/examples/test_files/v_YoYo_g25_c05.avi', 240,
-        '/home/tt2114/workspace/gr-deepwive_v1/examples/test_files/key_decoder_graph.trt', '/home/tt2114/workspace/gr-deepwive_v1/examples/test_files/interp_decoder_graph.trt',
+        '/home/tt2114/workspace/gr-deepwive_v1/examples/test_files/key_decoder.trt', '/home/tt2114/workspace/gr-deepwive_v1/examples/test_files/interp_decoder.trt',
         packet_len, 20, 20, 5, 0,
         False, False)
         self.channels_channel_model_0 = channels.channel_model(
@@ -301,9 +396,12 @@ class deepwive_tx_ofdm_custom(gr.top_block, Qt.QWidget):
             taps=[1.0 + 1j],
             noise_seed=0,
             block_tags=True)
+        self.blocks_tag_gate_0 = blocks.tag_gate(gr.sizeof_gr_complex * 1, False)
+        self.blocks_tag_gate_0.set_single_key("")
         self.blocks_stream_to_vector_0 = blocks.stream_to_vector(gr.sizeof_gr_complex*1, fft_len)
         self.blocks_pdu_to_tagged_stream_1 = blocks.pdu_to_tagged_stream(blocks.complex_t, length_tag_key)
         self.blocks_multiply_xx_0_0 = blocks.multiply_vcc(1)
+        self.blocks_multiply_const_vxx_0 = blocks.multiply_const_cc(0.7)
         self.blocks_moving_average_xx_1 = blocks.moving_average_cc(48, 1, 4000, 1)
         self.blocks_moving_average_xx_0 = blocks.moving_average_ff(48+cp_len, 1, 4000, 1)
         self.blocks_divide_xx_0 = blocks.divide_ff(1)
@@ -324,13 +422,16 @@ class deepwive_tx_ofdm_custom(gr.top_block, Qt.QWidget):
         self.connect((self.blocks_delay_0_0, 0), (self.blocks_conjugate_cc_0, 0))
         self.connect((self.blocks_delay_0_0, 0), (self.deepwive_v1_ofdm_sync_short_0, 0))
         self.connect((self.blocks_divide_xx_0, 0), (self.deepwive_v1_ofdm_sync_short_0, 2))
+        self.connect((self.blocks_divide_xx_0, 0), (self.qtgui_time_sink_x_1, 0))
         self.connect((self.blocks_moving_average_xx_0, 0), (self.blocks_divide_xx_0, 1))
         self.connect((self.blocks_moving_average_xx_1, 0), (self.blocks_complex_to_mag_0, 0))
         self.connect((self.blocks_moving_average_xx_1, 0), (self.deepwive_v1_ofdm_sync_short_0, 1))
+        self.connect((self.blocks_multiply_const_vxx_0, 0), (self.blocks_tag_gate_0, 0))
         self.connect((self.blocks_multiply_xx_0_0, 0), (self.blocks_moving_average_xx_1, 0))
         self.connect((self.blocks_pdu_to_tagged_stream_1, 0), (self.qtgui_const_sink_x_0, 0))
         self.connect((self.blocks_pdu_to_tagged_stream_1, 0), (self.qtgui_time_sink_x_2_0_0_0_3, 0))
         self.connect((self.blocks_stream_to_vector_0, 0), (self.fft_vxx_0_1, 0))
+        self.connect((self.blocks_tag_gate_0, 0), (self.qtgui_freq_sink_x_0, 0))
         self.connect((self.channels_channel_model_0, 0), (self.blocks_complex_to_mag_squared_0, 0))
         self.connect((self.channels_channel_model_0, 0), (self.blocks_delay_0_0, 0))
         self.connect((self.channels_channel_model_0, 0), (self.blocks_multiply_xx_0_0, 0))
@@ -341,6 +442,7 @@ class deepwive_tx_ofdm_custom(gr.top_block, Qt.QWidget):
         self.connect((self.deepwive_v1_ofdm_sync_long_0, 0), (self.blocks_stream_to_vector_0, 0))
         self.connect((self.deepwive_v1_ofdm_sync_short_0, 0), (self.deepwive_v1_ofdm_sync_long_0, 0))
         self.connect((self.digital_ofdm_carrier_allocator_cvc_0_0_0, 0), (self.fft_vxx_0, 0))
+        self.connect((self.digital_ofdm_cyclic_prefixer_0, 0), (self.blocks_multiply_const_vxx_0, 0))
         self.connect((self.digital_ofdm_cyclic_prefixer_0, 0), (self.channels_channel_model_0, 0))
         self.connect((self.fft_vxx_0, 0), (self.digital_ofdm_cyclic_prefixer_0, 0))
         self.connect((self.fft_vxx_0_1, 0), (self.deepwive_v1_ofdm_frame_equalizer_1, 0))
@@ -364,6 +466,12 @@ class deepwive_tx_ofdm_custom(gr.top_block, Qt.QWidget):
     def set_tx_freq(self, tx_freq):
         self.tx_freq = tx_freq
 
+    def get_tun_gain(self):
+        return self.tun_gain
+
+    def set_tun_gain(self, tun_gain):
+        self.tun_gain = tun_gain
+
     def get_sync_word(self):
         return self.sync_word
 
@@ -375,8 +483,16 @@ class deepwive_tx_ofdm_custom(gr.top_block, Qt.QWidget):
 
     def set_samp_rate(self, samp_rate):
         self.samp_rate = samp_rate
+        self.qtgui_freq_sink_x_0.set_frequency_range(0, self.samp_rate)
+        self.qtgui_time_sink_x_1.set_samp_rate(self.samp_rate)
         self.qtgui_time_sink_x_2_0_0_0_0_0.set_samp_rate(self.samp_rate)
         self.qtgui_time_sink_x_2_0_0_0_3.set_samp_rate(self.samp_rate)
+
+    def get_rx_gain(self):
+        return self.rx_gain
+
+    def set_rx_gain(self, rx_gain):
+        self.rx_gain = rx_gain
 
     def get_rolloff(self):
         return self.rolloff

@@ -7,7 +7,7 @@ templates:
   make: |-
     deepwive_v1.deepwive_v1_source(${source_fn}, ${model_cout},
     ${key_encoder_fn}, ${interp_encoder_fn}, ${ssf_net_fn}, ${bw_allocator_fn},
-    ${packet_len}, ${snr}, ${num_chunks}, ${gop_size}, ${use_fp16})
+    ${packet_len}, ${snr}, ${num_chunks}, ${gop_size}, ${use_fp16}, ${precode})
 
 #  Make one 'parameters' list entry for every parameter you want settable from the GUI.
 #     Keys include:
@@ -58,6 +58,10 @@ parameters:
 
 - id: use_fp16
   label: Use FP16 precision
+  dtype: bool
+
+- id: precode
+  label: Precode
   dtype: bool
 
 #  Make one 'inputs' list entry per input and one 'outputs' list entry per output.

@@ -30,6 +30,7 @@
 #include <gnuradio/io_signature.h>
 #include <deepwive_v1/header_insert.h>
 
+
 using namespace gr::deepwive_v1;
 using namespace std;
 
@@ -123,8 +124,8 @@ class header_insert_impl : public header_insert
             }
 
             d_header_bits = (char*)malloc(sizeof(char) * 48);
-            // generate_header_field(d_header_bits, d_first_flag, d_alloc_idx);
-            generate_header_field_old(d_header_bits, d_first_flag, d_alloc_idx);
+            generate_header_field(d_header_bits, d_first_flag, d_alloc_idx);
+            // generate_header_field_old(d_header_bits, d_first_flag, d_alloc_idx);
           }
 
           while (o < noutput && d_offset < 48) {
@@ -193,6 +194,58 @@ class header_insert_impl : public header_insert
       }
     }
 
+    void generate_header_field(char* out, unsigned first_flag, unsigned alloc_idx)
+    {
+      dout << "tx cc header bits first_flag " << first_flag << " alloc " << alloc_idx << std::endl;
+
+      char* header_bits = (char*)malloc(sizeof(char) * 24);
+      char* encoded_signal_header = (char*)malloc(sizeof(char) * 48);
+
+      // first_flag bits
+      dout << "header bits ";
+      header_bits[0] = get_bit(first_flag, 0);
+      dout << header_bits[0];
+
+      // alloc_idx bits
+      for (int i = 1; i < 12; i++) {
+        header_bits[i] = get_bit(alloc_idx, i-1);
+        dout << header_bits[i];
+      }
+
+      // 13-17th are zeros
+      for (int i = 12; i < 17; i++) {
+        header_bits[i] = 0;
+        dout << header_bits[i];
+      }
+
+      // 18th bit is parity for the first 17 bits
+      int sum = 0;
+      for (int i = 0; i < 17; i++) {
+        if (header_bits[i]) {
+          sum++;
+        }
+      }
+      header_bits[17] = sum % 2;
+      dout << header_bits[17];
+
+      // last 6 bits are zeros
+      for (int i = 18; i < 24; i++) {
+        header_bits[i] = 0;
+        dout << header_bits[i];
+      }
+      dout << std::endl;
+
+      convolutional_encoding(header_bits, encoded_signal_header);
+      interleave(encoded_signal_header, out, false);
+
+      for (int k = 0; k < 48; k++) {
+        dout << (int)out[k];
+      }
+      dout << std::endl;
+
+      free(header_bits);
+    }
+
     void generate_header_field_old(char* out, unsigned first_flag, unsigned alloc_idx)
     {
       dout << "tx header bits first_flag " << first_flag << " alloc " << alloc_idx << std::endl;
@@ -211,43 +264,33 @@ class header_insert_impl : public header_insert
 
     }
 
-    void generate_header_field(char* out, unsigned first_flag, unsigned alloc_idx)
+    void interleave(const char* in, char* out, bool reverse)
     {
-      dout << "tx cc header bits first_flag " << first_flag << " alloc " << alloc_idx << std::endl;
 
-      char* header_bits = (char*)malloc(sizeof(char) * 24);
+      int n_cbps = 48;
+      int first[n_cbps];
+      int second[n_cbps];
+      int s = std::max(1 / 2, 1);
 
-      // first_flag bits
-      header_bits[0] = get_bit(first_flag, 0);
-
-      // alloc_idx bits
-      for (int i = 1; i < 12; i++) {
-        header_bits[i] = get_bit(alloc_idx, i-1);
+      for (int j = 0; j < n_cbps; j++) {
+        first[j] = s * (j / s) + ((j + int(floor(16.0 * j / n_cbps))) % s);
       }
 
-      // 13th bit is parity
-      int sum = 0;
-      for (int i = 0; i < 12; i++) {
-        if (header_bits[i]) {
-          sum++;
+      for (int i = 0; i < n_cbps; i++) {
+        second[i] = 16 * i - (n_cbps - 1) * int(floor(16.0 * i / n_cbps));
+      }
+
+      for (int i = 0; i < 1; i++) {
+        for (int k = 0; k < n_cbps; k++) {
+          if (reverse) {
+            out[i * n_cbps + second[first[k]]] = in[i * n_cbps + k];
+          } else {
+            out[i * n_cbps + k] = in[i * n_cbps + second[first[k]]];
+          }
         }
       }
-      header_bits[12] = sum % 2;
-
-      // 14-24th are zeros
-      for (int i = 13; i < 24; i++) {
-        header_bits[i] = 0;
-      }
-
-      convolutional_encoding(header_bits, out);
-
-      for (int k = 0; k < 48; k++) {
-        dout << (int)out[k];
-      }
-      dout << std::endl;
-
-      free(header_bits);
     }
+
 
   private:
     enum { INSERT, COPY } d_state = INSERT;

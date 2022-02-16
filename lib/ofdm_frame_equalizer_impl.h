@@ -99,7 +99,7 @@ namespace gr {
         1,  -1, 1,  -1, 1,  1,  -1, -1, -1, 1,  1,  -1, -1, -1, -1, 1,  -1, -1, 1, -1, 1,  1,
         1,  1,  -1, 1,  -1, 1,  -1, 1,  -1, -1, -1, -1, -1, 1,  -1, 1,  1,  -1, 1, -1, 1,  1,
         1,  -1, -1, 1,  -1, -1, -1, 1,  1,  1,  -1, -1, -1, -1, -1, -1, -1
-      };
+        };
 
         const gr_complex pilots[4] = {1, 1, 1, -1};
 
@@ -109,7 +109,15 @@ namespace gr {
         1,  -1, 1,  1,  1,  1,  0,  1,  -1, -1, 1,  1,  -1,
         1,  -1, 1,  -1, -1, -1, -1, -1, 1,  1,  -1, -1, 1,
         -1, 1,  -1, 1,  1,  1,  1,  0,  0,  0,  0,  0
-      };
+        };
+
+        const int interleaver_pattern[48] = {
+            0, 3, 6, 9,  12, 15, 18, 21, 24, 27, 30, 33, 36, 39, 42, 45,
+            1, 4, 7, 10, 13, 16, 19, 22, 25, 28, 31, 34, 37, 40, 43, 46,
+            2, 5, 8, 11, 14, 17, 20, 23, 26, 29, 32, 35, 38, 41, 44, 47
+        };
+
+        uint8_t d_deinterleaved[48];
 
         // viterbi params
         union branchtab27 {
@@ -121,7 +129,7 @@ namespace gr {
         unsigned char d_path0_generic[64] __attribute__((aligned(16)));
         unsigned char d_path1_generic[64] __attribute__((aligned(16)));
         // Position in circular buffer where the current decoded byte is stored
-        int d_store_pos = 0;
+        int d_store_pos;
         // Metrics for each state
         unsigned char d_mmresult[64] __attribute__((aligned(16)));
         // Paths for each state
@@ -140,7 +148,7 @@ namespace gr {
         0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0,
     };
 
-        int d_ntraceback = 1;
+        const int d_ntraceback = 1;  // FIXME it should be 5 but doesn't work; this works
         uint8_t d_decoded[MAX_ENCODED_BITS * 3/4];
 
      public:
@@ -169,6 +177,8 @@ namespace gr {
         double get_snr();
 
         std::vector<gr_complex> get_csi();
+
+        void deinterleave(uint8_t* rx_bits);
 
         // viterbi functions
         void extract_from_header_cc(uint8_t* bits);

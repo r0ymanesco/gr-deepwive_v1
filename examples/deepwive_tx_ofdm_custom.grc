@@ -43,8 +43,8 @@ blocks:
     rangeType: float
     start: '0.1'
     step: '0.1'
-    stop: '10.0'
-    value: '0.4'
+    stop: '1.0'
+    value: '0.1'
     widget: counter_slider
   states:
     bus_sink: false
@@ -130,7 +130,7 @@ blocks:
   id: variable
   parameters:
     comment: ''
-    value: '1440'
+    value: '720'
   states:
     bus_sink: false
     bus_source: false
@@ -212,7 +212,7 @@ blocks:
     start: '0'
     step: '1'
     stop: '73'
-    value: '30'
+    value: '40'
     widget: counter_slider
   states:
     bus_sink: false
@@ -220,12 +220,12 @@ blocks:
     bus_structure: null
     coordinate: [712, 772.0]
     rotation: 0
-    state: disabled
+    state: enabled
 - name: samp_rate
   id: variable
   parameters:
     comment: ''
-    value: int(30e6)
+    value: int(2.5e6)
   states:
     bus_sink: false
     bus_source: false
@@ -278,7 +278,7 @@ blocks:
     start: '0'
     step: '1'
     stop: '73'
-    value: '70'
+    value: '50'
     widget: counter_slider
   states:
     bus_sink: false
@@ -286,12 +286,12 @@ blocks:
     bus_structure: null
     coordinate: [1448, 596.0]
     rotation: 0
-    state: disabled
+    state: enabled
 - name: tx_freq
   id: variable
   parameters:
     comment: ''
-    value: 1e9
+    value: '446094000'
   states:
     bus_sink: false
     bus_source: false
@@ -440,7 +440,7 @@ blocks:
     bus_structure: null
     coordinate: [224, 612.0]
     rotation: 0
-    state: disabled
+    state: enabled
 - name: blocks_multiply_xx_0_0
   id: blocks_multiply_xx
   parameters:
@@ -530,7 +530,7 @@ blocks:
     bus_structure: null
     coordinate: [976, 604.0]
     rotation: 0
-    state: disabled
+    state: enabled
 - name: blocks_vector_to_stream_0
   id: blocks_vector_to_stream
   parameters:
@@ -613,8 +613,8 @@ blocks:
     alias: ''
     comment: ''
     gop_size: '5'
-    interp_decoder_fn: '''/home/tt2114/workspace/gr-deepwive_v1/examples/test_files/interp_decoder_graph.trt'''
-    key_decoder_fn: '''/home/tt2114/workspace/gr-deepwive_v1/examples/test_files/key_decoder_graph.trt'''
+    interp_decoder_fn: '''/home/tt2114/workspace/gr-deepwive_v1/examples/test_files/interp_decoder.trt'''
+    key_decoder_fn: '''/home/tt2114/workspace/gr-deepwive_v1/examples/test_files/key_decoder.trt'''
     model_cout: '240'
     num_chunks: '20'
     packet_len: packet_len
@@ -635,19 +635,20 @@ blocks:
   parameters:
     affinity: ''
     alias: ''
-    bw_allocator_fn: '''/home/tt2114/workspace/gr-deepwive_v1/examples/test_files/bw_allocator_graph.trt'''
+    bw_allocator_fn: '''/home/tt2114/workspace/gr-deepwive_v1/examples/test_files/bw_allocator.trt'''
     comment: ''
     gop_size: '5'
-    interp_encoder_fn: '''/home/tt2114/workspace/gr-deepwive_v1/examples/test_files/interp_encoder_graph.trt'''
-    key_encoder_fn: '''/home/tt2114/workspace/gr-deepwive_v1/examples/test_files/key_encoder_graph.trt'''
+    interp_encoder_fn: '''/home/tt2114/workspace/gr-deepwive_v1/examples/test_files/interp_encoder.trt'''
+    key_encoder_fn: '''/home/tt2114/workspace/gr-deepwive_v1/examples/test_files/key_encoder.trt'''
     maxoutbuf: '0'
     minoutbuf: '0'
     model_cout: '240'
     num_chunks: '20'
     packet_len: packet_len
+    precode: 'False'
     snr: '20.'
     source_fn: '''/home/tt2114/workspace/gr-deepwive_v1/examples/test_files/v_YoYo_g25_c05.avi'''
-    ssf_net_fn: '''/home/tt2114/workspace/gr-deepwive_v1/examples/test_files/ssf_net_graph.trt'''
+    ssf_net_fn: '''/home/tt2114/workspace/gr-deepwive_v1/examples/test_files/ssf_net.trt'''
     use_fp16: 'False'
   states:
     bus_sink: false
@@ -841,9 +842,9 @@ blocks:
     affinity: ''
     alias: ''
     allow_tcxo_dac: '0'
-    analog_bandw_ch0: '0'
+    analog_bandw_ch0: 5e6
     analog_bandw_ch1: 5e6
-    calibr_bandw_ch0: samp_rate
+    calibr_bandw_ch0: 5e6
     calibr_bandw_ch1: 2.5e6
     channel_mode: '0'
     comment: ''
@@ -875,15 +876,15 @@ blocks:
     affinity: ''
     alias: ''
     allow_tcxo_dac: '0'
-    analog_bandw_ch0: '0'
+    analog_bandw_ch0: 5.5e6
     analog_bandw_ch1: 5e6
-    calibr_bandw_ch0: samp_rate
+    calibr_bandw_ch0: 5e6
     calibr_bandw_ch1: 2.5e6
     ch_align: 'False'
     channel_mode: '0'
     comment: ''
     dacVal: '180'
-    digital_bandw_ch0: '0'
+    digital_bandw_ch0: samp_rate
     digital_bandw_ch1: samp_rate
     filename: ''
     gain_dB_ch0: rx_gain
@@ -897,7 +898,7 @@ blocks:
     oversample: '0'
     rf_freq: tx_freq
     samp_rate: samp_rate
-    serial: 00090706024F2436
+    serial: 0009070602472610
   states:
     bus_sink: false
     bus_source: false
@@ -1168,7 +1169,7 @@ blocks:
     bus_structure: null
     coordinate: [1240, 576.0]
     rotation: 0
-    state: disabled
+    state: enabled
 - name: qtgui_freq_sink_x_0_0
   id: qtgui_freq_sink_x
   parameters:
@@ -1264,7 +1265,7 @@ blocks:
     alpha7: '1.0'
     alpha8: '1.0'
     alpha9: '1.0'
-    autoscale: 'True'
+    autoscale: 'False'
     axislabels: 'True'
     color1: blue
     color10: dark blue
@@ -1337,7 +1338,7 @@ blocks:
     width9: '1'
     ylabel: Amplitude
     ymax: '1'
-    ymin: '-1'
+    ymin: '0'
     yunit: '""'
   states:
     bus_sink: false
@@ -1345,7 +1346,7 @@ blocks:
     bus_structure: null
     coordinate: [1344, 948.0]
     rotation: 0
-    state: disabled
+    state: enabled
 - name: qtgui_time_sink_x_2_0
   id: qtgui_time_sink_x
   parameters:
@@ -2063,7 +2064,7 @@ blocks:
     bus_structure: null
     coordinate: [440, 572.0]
     rotation: 0
-    state: disabled
+    state: enabled
 - name: virtual_sink_3
   id: virtual_sink
   parameters:

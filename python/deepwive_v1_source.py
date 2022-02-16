@@ -227,7 +227,7 @@ class deepwive_v1_source(gr.sync_block):
 
     def __init__(self, source_fn, model_cout,
                  key_encoder_fn, interp_encoder_fn, ssf_net_fn, bw_allocator_fn,
-                 packet_len=96, snr=20, num_chunks=20, gop_size=5, use_fp16=False):
+                 packet_len=96, snr=20, num_chunks=20, gop_size=5, use_fp16=False, precode=False):
         gr.sync_block.__init__(self,
                                name="deepwive_v1_source",
                                in_sig=None,
@@ -246,7 +246,6 @@ class deepwive_v1_source(gr.sync_block):
         self.source_fn = source_fn
         self.model_cout = model_cout
         self.packet_len = packet_len
-        # TODO can increase packet_len to codeword_len, need to change n_symbols at rx
         self.snr = np.array([[snr]], dtype=self.target_dtype)
         self.use_fp16 = use_fp16
 
@@ -275,6 +274,10 @@ class deepwive_v1_source(gr.sync_block):
         self._get_bw_set()
         self._allocate_memory()
         self._get_gaussian_kernels()
+
+        self.precode = precode
+        if self.precode:
+            self._pre_encode()
 
     def _get_runtime(self, logger):
         self.runtime = trt.Runtime(logger)
@@ -586,6 +589,30 @@ class deepwive_v1_source(gr.sync_block):
         dec_frames = self._decode_gop(codeword, 504, gop[0])
         return dec_frames
 
+    def _pre_encode(self):
+        self.precode_codewords = []
+        self.precode_first = []
+        self.precode_alloc = []
+
+        print('Precoding START...')
+        for gop_idx in range(self.n_gops):
+            if gop_idx == 0:
+                codeword = self._key_frame_encode(self.video_frames[0], self.snr)
+                codeword = codeword.reshape(-1, 2)
+                codeword = np.concatenate((codeword.reshape(-1, 2), np.zeros((self.n_padding, 2))), axis=0)
+                self.precode_codewords.append(codeword)
+                self.precode_first.append(1.)
+                self.precode_alloc.append((2**11) - 1)
+            else:
+                curr_gop = self.video_frames[gop_idx*(self.gop_size-1):(gop_idx+1)*(self.gop_size-1)+1]
+                codeword, bw_allocation = self._encode_gop(curr_gop)
+                codeword = np.concatenate((codeword.reshape(-1, 2), np.zeros((self.n_padding, 2))), axis=0)
+                self.precode_codewords.append(codeword)
+                self.precode_first.append(0.)
+                self.precode_alloc.append(bw_allocation)
+
+        print('Precoding COMPLETE')
+
     def work(self, input_items, output_items):
         payload_out = output_items[0]
         # encoded_symbols = output_items[1]
@@ -599,18 +626,23 @@ class deepwive_v1_source(gr.sync_block):
                 self._reset()
 
             if self.packets is None:
-                if self.gop_idx == 0:
-                    codeword = self._key_frame_encode(self.video_frames[0], self.snr)
-                    codeword = codeword.reshape(-1, 2)
-                    codeword = np.concatenate((codeword.reshape(-1, 2), np.zeros((self.n_padding, 2))), axis=0)
-                    self.first = 1.
-                    self.curr_bw_allocation = (2**11) - 1
+                if self.precode:
+                    codeword = self.precode_codewords[self.gop_idx]
+                    self.first = self.precode_first[self.gop_idx]
+                    self.curr_bw_allocation = self.precode_alloc[self.gop_idx]
                 else:
-                    curr_gop = self.video_frames[self.gop_idx*(self.gop_size-1)
-                                                 :(self.gop_idx+1)*(self.gop_size-1)+1]
-                    codeword, self.curr_bw_allocation = self._encode_gop(curr_gop)
-                    codeword = np.concatenate((codeword.reshape(-1, 2), np.zeros((self.n_padding, 2))), axis=0)
-                    self.first = 0.
+                    if self.gop_idx == 0:
+                        codeword = self._key_frame_encode(self.video_frames[0], self.snr)
+                        codeword = codeword.reshape(-1, 2)
+                        codeword = np.concatenate((codeword.reshape(-1, 2), np.zeros((self.n_padding, 2))), axis=0)
+                        self.first = 1.
+                        self.curr_bw_allocation = (2**11) - 1
+                    else:
+                        curr_gop = self.video_frames[self.gop_idx*(self.gop_size-1)
+                                                    :(self.gop_idx+1)*(self.gop_size-1)+1]
+                        codeword, self.curr_bw_allocation = self._encode_gop(curr_gop)
+                        codeword = np.concatenate((codeword.reshape(-1, 2), np.zeros((self.n_padding, 2))), axis=0)
+                        self.first = 0.
 
                 codeword *= 0.1
                 self.packets = np.vsplit(codeword, self.n_packets)

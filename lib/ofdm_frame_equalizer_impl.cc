@@ -176,8 +176,8 @@ namespace gr {
 
         // process header
         if (d_current_symbol == 2) {
-          extract_from_header(bits);
-          // extract_from_header_cc(bits);
+          // extract_from_header(bits);
+          extract_from_header_cc(bits);
 
           dout << "snr " << get_snr() - 20 << " dB" << std::endl;
 
@@ -213,7 +213,7 @@ namespace gr {
 
       }
 
-      dout << "consumed " << i << std::endl;
+      // dout << "consumed " << i << std::endl;
 
       consume(0, i);
       return o;
@@ -278,6 +278,13 @@ namespace gr {
       }
     }
 
+    void ofdm_frame_equalizer_impl::deinterleave(uint8_t* rx_bits)
+    {
+      for (int i = 0; i < 48; i++) {
+        d_deinterleaved[i] = rx_bits[interleaver_pattern[i]];
+      }
+    }
+
     void ofdm_frame_equalizer_impl::extract_from_header_cc(uint8_t* bits)
     {
       dout << "received header bits" << std::endl;
@@ -286,7 +293,9 @@ namespace gr {
       }
       dout << std::endl;
 
-      uint8_t* decoded_bits = cc_decode(bits);
+      deinterleave(bits);
+
+      uint8_t* decoded_bits = cc_decode(d_deinterleaved);
       dout << "cc decoded header" << std::endl;
 
       d_first_flag = 0;
@@ -309,6 +318,7 @@ namespace gr {
       dout << std::endl;
 
       if (parity != decoded_bits[12]) {
+      // if (false) {
         throw std::runtime_error("header parity check fail");
       }
       else {
