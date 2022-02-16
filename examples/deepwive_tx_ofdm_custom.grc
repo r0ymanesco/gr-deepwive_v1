@@ -654,7 +654,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [24, 252.0]
+    coordinate: [24, 244.0]
     rotation: 0
     state: enabled
 - name: deepwive_v1_header_insert_0

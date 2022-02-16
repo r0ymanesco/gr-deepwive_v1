@@ -148,7 +148,7 @@ namespace gr {
         0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0,
     };
 
-        const int d_ntraceback = 1;  // FIXME it should be 5 but doesn't work; this works
+        const int d_ntraceback = 4;  // FIXME it should be 5 but doesn't work; this works
         uint8_t d_decoded[MAX_ENCODED_BITS * 3/4];
 
      public:
