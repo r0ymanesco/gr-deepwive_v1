@@ -600,6 +600,7 @@ class deepwive_v1_source(gr.sync_block):
                 codeword = self._key_frame_encode(self.video_frames[0], self.snr)
                 codeword = codeword.reshape(-1, 2)
                 codeword = np.concatenate((codeword.reshape(-1, 2), np.zeros((self.n_padding, 2))), axis=0)
+                codeword *= 0.1
                 self.precode_codewords.append(codeword)
                 self.precode_first.append(1.)
                 self.precode_alloc.append((2**11) - 1)
@@ -607,6 +608,7 @@ class deepwive_v1_source(gr.sync_block):
                 curr_gop = self.video_frames[gop_idx*(self.gop_size-1):(gop_idx+1)*(self.gop_size-1)+1]
                 codeword, bw_allocation = self._encode_gop(curr_gop)
                 codeword = np.concatenate((codeword.reshape(-1, 2), np.zeros((self.n_padding, 2))), axis=0)
+                codeword *= 0.1
                 self.precode_codewords.append(codeword)
                 self.precode_first.append(0.)
                 self.precode_alloc.append(bw_allocation)
@@ -644,7 +646,8 @@ class deepwive_v1_source(gr.sync_block):
                         codeword = np.concatenate((codeword.reshape(-1, 2), np.zeros((self.n_padding, 2))), axis=0)
                         self.first = 0.
 
-                codeword *= 0.1
+                    codeword *= 0.1
+
                 self.packets = np.vsplit(codeword, self.n_packets)
 
                 # if first:

@@ -176,8 +176,8 @@ namespace gr {
 
         // process header
         if (d_current_symbol == 2) {
-          // extract_from_header(bits);
-          extract_from_header_cc(bits);
+          extract_from_header(bits);
+          // extract_from_header_cc(bits);
 
           dout << "snr " << get_snr() - 20 << " dB" << std::endl;
 
@@ -302,7 +302,7 @@ namespace gr {
       d_alloc_idx = 0;
       bool parity = false;
 
-      for (int i = 0; i < 12; i++) {
+      for (int i = 0; i < 17; i++) {
         dout << (unsigned)decoded_bits[i];
 
         parity ^= decoded_bits[i];
@@ -310,15 +310,14 @@ namespace gr {
         if (i == 0) {
           d_first_flag |= (((unsigned)decoded_bits[i]) & 1);
         }
-        else {
+        else if (i < 12) {
           d_alloc_idx |= (((unsigned)decoded_bits[i]) & 1) << (i - 1);
         }
 
       }
       dout << std::endl;
 
-      if (parity != decoded_bits[12]) {
-      // if (false) {
+      if (parity != decoded_bits[17]) {
         throw std::runtime_error("header parity check fail");
       }
       else {

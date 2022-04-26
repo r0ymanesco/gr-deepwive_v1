@@ -124,8 +124,8 @@ class header_insert_impl : public header_insert
             }
 
             d_header_bits = (char*)malloc(sizeof(char) * 48);
-            generate_header_field(d_header_bits, d_first_flag, d_alloc_idx);
-            // generate_header_field_old(d_header_bits, d_first_flag, d_alloc_idx);
+            // generate_header_field(d_header_bits, d_first_flag, d_alloc_idx);
+            generate_header_field_old(d_header_bits, d_first_flag, d_alloc_idx);
           }
 
           while (o < noutput && d_offset < 48) {
